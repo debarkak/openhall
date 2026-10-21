@@ -24,6 +24,7 @@ export async function GET(
                     options: {
                       select: {
                         id: true,
+                        text: true,
                         isCorrect: true,
                       },
                     },

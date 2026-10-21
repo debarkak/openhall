@@ -53,6 +53,18 @@ export interface TelemetryEvent {
   metadata?: Record<string, unknown>;
 }
 
+export interface QuestionReview {
+  id: string;
+  sectionTitle: string;
+  questionNumber: number;
+  stem: string;
+  selectedOptionText: string | null;
+  correctOptionText: string;
+  isCorrect: boolean;
+  isAttempted: boolean;
+  solutionExplanation?: string | null;
+}
+
 export interface EvaluationResult {
   totalQuestions: number;
   maxMarks: number;
@@ -63,4 +75,5 @@ export interface EvaluationResult {
   finalScore: number;
   candidateName: string;
   examTitle: string;
+  questionReviews?: QuestionReview[];
 }

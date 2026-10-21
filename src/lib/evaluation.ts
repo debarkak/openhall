@@ -1,12 +1,15 @@
-import { EvaluationResult } from "./types";
+import { EvaluationResult, QuestionReview } from "./types";
 
 export interface EvaluatableOption {
   id: string;
+  text?: string;
   isCorrect: boolean;
 }
 
 export interface EvaluatableQuestion {
   id: string;
+  stem?: string;
+  solutionExplanation?: string | null;
   positiveMarks?: number | null;
   negativePenalty?: number | null;
   options: EvaluatableOption[];
@@ -17,6 +20,7 @@ export interface EvaluatableExam {
   positiveMarks: number;
   negativePenalty: number;
   sections: {
+    title?: string;
     questions: EvaluatableQuestion[];
   }[];
 }
@@ -36,9 +40,6 @@ export function evaluateSession(
   attempts: StoredAttempt[],
   candidateName: string
 ): EvaluationResult {
-  const allQuestions = exam.sections.flatMap((s) => s.questions);
-  const totalQuestions = allQuestions.length;
-
   const attemptMap = new Map<string, string | null>();
   for (const a of attempts) {
     if (a.optionId && a.status === "ATTEMPTED_SAVED") {
@@ -53,29 +54,58 @@ export function evaluateSession(
   let finalScore = 0;
   let maxMarks = 0;
 
-  for (const q of allQuestions) {
-    const pos = q.positiveMarks ?? exam.positiveMarks;
-    const neg = q.negativePenalty ?? exam.negativePenalty;
-    maxMarks += pos;
+  let globalQuestionNumber = 1;
+  const questionReviews: QuestionReview[] = [];
 
-    const selectedOptionId = attemptMap.get(q.id);
+  for (const section of exam.sections) {
+    const secTitle = section.title || "general";
 
-    if (!selectedOptionId) {
-      unattemptedQuestions++;
-      continue;
-    }
+    for (const q of section.questions) {
+      const pos = q.positiveMarks ?? exam.positiveMarks;
+      const neg = q.negativePenalty ?? exam.negativePenalty;
+      maxMarks += pos;
 
-    questionsAttempted++;
-    const chosenOption = q.options.find((opt) => opt.id === selectedOptionId);
+      const selectedOptionId = attemptMap.get(q.id);
+      const chosenOption = selectedOptionId
+        ? q.options.find((opt) => opt.id === selectedOptionId)
+        : null;
+      const correctOption = q.options.find((opt) => opt.isCorrect);
 
-    if (chosenOption && chosenOption.isCorrect) {
-      correctResponses++;
-      finalScore += pos;
-    } else {
-      incorrectResponses++;
-      finalScore -= neg;
+      const isAttempted = !!selectedOptionId;
+      const isCorrect = !!chosenOption?.isCorrect;
+
+      if (!selectedOptionId) {
+        unattemptedQuestions++;
+      } else {
+        questionsAttempted++;
+        if (isCorrect) {
+          correctResponses++;
+          finalScore += pos;
+        } else {
+          incorrectResponses++;
+          finalScore -= neg;
+        }
+      }
+
+      if (q.stem) {
+        questionReviews.push({
+          id: q.id,
+          sectionTitle: secTitle,
+          questionNumber: globalQuestionNumber,
+          stem: q.stem,
+          selectedOptionText: chosenOption?.text || null,
+          correctOptionText: correctOption?.text || "(unspecified)",
+          isCorrect,
+          isAttempted,
+          solutionExplanation: q.solutionExplanation || null,
+        });
+      }
+
+      globalQuestionNumber++;
     }
   }
+
+  const totalQuestions = globalQuestionNumber - 1;
 
   return {
     totalQuestions,
@@ -87,5 +117,6 @@ export function evaluateSession(
     finalScore: Math.round(finalScore * 100) / 100,
     candidateName,
     examTitle: exam.title,
+    questionReviews,
   };
 }

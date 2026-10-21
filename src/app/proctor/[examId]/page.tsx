@@ -90,7 +90,7 @@ export default function LiveProctorCockpitPage({
           setTelemetryLogs((prev) => [
             {
               time,
-              message: `[alert] ${data.candidateName || "candidate"} triggered ${data.eventType.toLowerCase()}`,
+              message: `[alert] ${(data.candidateName || "candidate").toLowerCase()} triggered ${data.eventType.toLowerCase()}`,
               type: "VIOLATION",
             },
             ...prev,
@@ -112,7 +112,7 @@ export default function LiveProctorCockpitPage({
           setTelemetryLogs((prev) => [
             {
               time,
-              message: `[submission] ${data.candidateName} completed examination with ${data.finalScore} marks`,
+              message: `[submission] ${(data.candidateName || "candidate").toLowerCase()} completed examination with ${data.finalScore} marks`,
               type: "SUBMIT",
             },
             ...prev,
