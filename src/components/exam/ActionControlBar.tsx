@@ -28,7 +28,7 @@ export const ActionControlBar: React.FC<ActionControlBarProps> = ({
         disabled={disabled || !hasSelection}
         className="retro-btn px-4 py-2 text-xs sm:text-sm font-bold tracking-tight disabled:opacity-50"
       >
-        Deselect
+        deselect
       </button>
 
       {/* Right Cluster: Skip + Save & Next */}
@@ -39,7 +39,7 @@ export const ActionControlBar: React.FC<ActionControlBarProps> = ({
           disabled={disabled}
           className="retro-btn px-4 py-2 text-xs sm:text-sm font-bold tracking-tight hover:bg-slate-100"
         >
-          Skip &rarr;
+          skip &rarr;
         </button>
 
         <button
@@ -48,7 +48,7 @@ export const ActionControlBar: React.FC<ActionControlBarProps> = ({
           disabled={disabled}
           className="retro-btn-green px-5 py-2 text-xs sm:text-sm font-bold tracking-tight"
         >
-          {isLastQuestion ? "Save & Finish Section" : "Save & Next"}
+          {isLastQuestion ? "save & finish section" : "save & next"}
         </button>
       </div>
     </div>

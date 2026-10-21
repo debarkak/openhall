@@ -8,7 +8,7 @@ interface SubmissionSpinnerProps {
 }
 
 export const SubmissionSpinner: React.FC<SubmissionSpinnerProps> = ({
-  message = "Submitting examination session to server. Please wait...",
+  message = "submitting examination session to server. please wait...",
 }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4">
@@ -16,16 +16,16 @@ export const SubmissionSpinner: React.FC<SubmissionSpinnerProps> = ({
         <div className="retro-titlebar">
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-sky-200" />
-            <span className="text-xs font-bold uppercase tracking-wider">
-              Audit &amp; Finalizing
+            <span className="text-xs font-bold tracking-wider">
+              audit &amp; finalizing
             </span>
           </div>
         </div>
 
         <div className="p-5">
           <div className="retro-sunken bg-white p-4 text-center">
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">
-              Submitting Answers
+            <h3 className="text-sm font-black text-slate-900 tracking-tight">
+              submitting answers
             </h3>
             <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">{message}</p>
 

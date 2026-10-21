@@ -20,8 +20,8 @@ export const QuestionPalette: React.FC<QuestionPaletteProps> = ({
 }) => {
   return (
     <div className="w-full">
-      <div className="mb-2 text-xs font-black uppercase tracking-wider text-slate-800">
-        Question Palette
+      <div className="mb-2 text-xs font-black tracking-wider text-slate-800">
+        question palette
       </div>
       <div className="grid grid-cols-5 gap-2">
         {Array.from({ length: totalQuestions }).map((_, idx) => {
@@ -48,9 +48,9 @@ export const QuestionPalette: React.FC<QuestionPaletteProps> = ({
               type="button"
               onClick={() => onSelectQuestion(idx)}
               className={`flex h-9 sm:h-10 items-center justify-center text-xs sm:text-sm ${btnClass}`}
-              aria-label={`Jump to Question ${displayNum}`}
+              aria-label={`jump to question ${displayNum}`}
             >
-              Q{displayNum}
+              q{displayNum}
             </button>
           );
         })}

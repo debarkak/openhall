@@ -40,8 +40,8 @@ export const CircularProgressGauge: React.FC<CircularProgressGaugeProps> = ({
       <div className="retro-sunken-dark px-3 py-1 flex items-center gap-2">
         <Clock className="h-3.5 w-3.5 text-cyan-400" />
         <div className="flex flex-col">
-          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-none">
-            Time Remaining
+          <span className="text-[9px] font-bold tracking-wider text-slate-400 leading-none">
+            time left
           </span>
           <span
             className={`font-mono text-sm sm:text-base font-black tracking-widest leading-none mt-0.5 ${
@@ -55,8 +55,8 @@ export const CircularProgressGauge: React.FC<CircularProgressGaugeProps> = ({
 
       {/* Classic 3D Progress Bar */}
       <div className="hidden md:flex flex-col w-20">
-        <div className="text-[9px] font-bold uppercase text-slate-600 mb-0.5">
-          Progress: {Math.round(progressPercent)}%
+        <div className="text-[9px] font-bold text-slate-600 mb-0.5">
+          progress: {Math.round(progressPercent)}%
         </div>
         <div className="retro-sunken h-2.5 w-full bg-slate-300 overflow-hidden">
           <div

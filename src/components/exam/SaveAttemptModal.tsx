@@ -26,14 +26,14 @@ export const SaveAttemptModal: React.FC<SaveAttemptModalProps> = ({
           <div className="flex items-center gap-1.5">
             <HelpCircle className="h-3.5 w-3.5 text-sky-200" />
             <span className="text-xs font-bold tracking-wide">
-              Unsaved Answer
+              unsaved answer
             </span>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="retro-btn flex h-5 w-5 items-center justify-center text-[10px] text-red-700"
-            aria-label="Close modal"
+            aria-label="close modal"
           >
             ✕
           </button>
@@ -42,7 +42,7 @@ export const SaveAttemptModal: React.FC<SaveAttemptModalProps> = ({
         {/* Modal Description */}
         <div className="p-4">
           <div className="retro-sunken bg-white p-3.5 text-xs text-slate-700 leading-relaxed mb-4">
-            You picked an option on this question. Do you want to save it before jumping to another question?
+            you picked an option on this question. do you want to save it before jumping to another question?
           </div>
 
           {/* Action Buttons */}
@@ -52,14 +52,14 @@ export const SaveAttemptModal: React.FC<SaveAttemptModalProps> = ({
               onClick={onCancel}
               className="retro-btn min-w-[75px] py-1 text-xs font-bold"
             >
-              Don&apos;t Save
+              don&apos;t save
             </button>
             <button
               type="button"
               onClick={onConfirm}
               className="retro-btn-green min-w-[75px] py-1 text-xs font-bold"
             >
-              Save &amp; Jump
+              save &amp; jump
             </button>
           </div>
         </div>
