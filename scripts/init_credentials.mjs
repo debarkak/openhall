@@ -3,6 +3,22 @@ import crypto from "crypto";
 
 const prisma = new PrismaClient();
 
+function getInitialPassword(variableName, developmentDefault) {
+  const configuredPassword = process.env[variableName];
+
+  if (process.env.NODE_ENV === "production") {
+    if (!configuredPassword) {
+      throw new Error(`${variableName} must be set before initializing production credentials.`);
+    }
+    if (configuredPassword.length < 12) {
+      throw new Error(`${variableName} must be at least 12 characters in production.`);
+    }
+    return configuredPassword;
+  }
+
+  return configuredPassword || developmentDefault;
+}
+
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
   const derivedKey = crypto.scryptSync(password, salt, 64).toString("hex");
@@ -12,8 +28,8 @@ function hashPassword(password) {
 async function initCredentials() {
   console.log("🔐 Initializing encrypted credentials in OpenHall database...");
 
-  const teacherPassword = process.env.INITIAL_TEACHER_PASSWORD || "teacher123";
-  const studentPassword = process.env.INITIAL_STUDENT_PASSWORD || "student123";
+  const teacherPassword = getInitialPassword("INITIAL_TEACHER_PASSWORD", "teacher123");
+  const studentPassword = getInitialPassword("INITIAL_STUDENT_PASSWORD", "student123");
 
   // 1. Teacher Account
   const teacherHash = hashPassword(teacherPassword);

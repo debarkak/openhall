@@ -5,6 +5,28 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Lock, KeyRound, User, ArrowLeft, ShieldCheck, AlertTriangle, GraduationCap, Laptop } from "lucide-react";
 
+function getSafePostLoginRedirect(target: string, role: string, origin: string): string | null {
+  if (!target.startsWith("/") || target.startsWith("//") || target.includes("\\")) {
+    return null;
+  }
+
+  try {
+    const url = new URL(target, origin);
+    if (url.origin !== origin) return null;
+
+    const allowedRoots = role === "TEACHER" || role === "ADMIN"
+      ? ["/studio", "/proctor"]
+      : ["/lobby", "/exam"];
+    const allowed = allowedRoots.some(
+      (root) => url.pathname === root || url.pathname.startsWith(`${root}/`)
+    );
+
+    return allowed ? `${url.pathname}${url.search}${url.hash}` : null;
+  } catch {
+    return null;
+  }
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -50,7 +72,10 @@ function LoginForm() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        const destination = redirectTarget || data.redirectUrl || (data.user.role === "TEACHER" ? "/studio" : "/lobby");
+        const destination =
+          getSafePostLoginRedirect(redirectTarget, data.user.role, window.location.origin) ||
+          data.redirectUrl ||
+          (data.user.role === "TEACHER" || data.user.role === "ADMIN" ? "/studio" : "/lobby");
         router.push(destination);
         router.refresh();
       } else {
@@ -75,45 +100,47 @@ function LoginForm() {
         </p>
       </div>
 
-      {/* Quick Preset Selector Buttons */}
-      <div>
-        <span className="block text-[10px] font-bold text-slate-700 mb-1.5">
-          quick demo credentials (click to pre-fill):
-        </span>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => handleFillCredentials("STUDENT")}
-            className={`retro-btn p-2 text-left text-xs font-bold flex items-center gap-2 ${
-              activeRole === "STUDENT" ? "ring-2 ring-emerald-600 bg-emerald-50" : ""
-            }`}
-          >
-            <GraduationCap className="h-4 w-4 text-emerald-800 shrink-0" />
-            <div className="truncate">
-              <span>student</span>
-              <span className="block text-[9px] text-slate-500 font-normal font-mono truncate">
-                student@openhall.edu
-              </span>
-            </div>
-          </button>
+      {/* Demo shortcuts are only rendered in local development. */}
+      {process.env.NODE_ENV !== "production" && (
+        <div>
+          <span className="block text-[10px] font-bold text-slate-700 mb-1.5">
+            quick demo credentials (click to pre-fill):
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handleFillCredentials("STUDENT")}
+              className={`retro-btn p-2 text-left text-xs font-bold flex items-center gap-2 ${
+                activeRole === "STUDENT" ? "ring-2 ring-emerald-600 bg-emerald-50" : ""
+              }`}
+            >
+              <GraduationCap className="h-4 w-4 text-emerald-800 shrink-0" />
+              <div className="truncate">
+                <span>student</span>
+                <span className="block text-[9px] text-slate-500 font-normal font-mono truncate">
+                  student@openhall.edu
+                </span>
+              </div>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handleFillCredentials("TEACHER")}
-            className={`retro-btn p-2 text-left text-xs font-bold flex items-center gap-2 ${
-              activeRole === "TEACHER" ? "ring-2 ring-amber-600 bg-amber-50" : ""
-            }`}
-          >
-            <Laptop className="h-4 w-4 text-amber-800 shrink-0" />
-            <div className="truncate">
-              <span>teacher</span>
-              <span className="block text-[9px] text-slate-500 font-normal font-mono truncate">
-                teacher@openhall.edu
-              </span>
-            </div>
-          </button>
+            <button
+              type="button"
+              onClick={() => handleFillCredentials("TEACHER")}
+              className={`retro-btn p-2 text-left text-xs font-bold flex items-center gap-2 ${
+                activeRole === "TEACHER" ? "ring-2 ring-amber-600 bg-amber-50" : ""
+              }`}
+            >
+              <Laptop className="h-4 w-4 text-amber-800 shrink-0" />
+              <div className="truncate">
+                <span>teacher</span>
+                <span className="block text-[9px] text-slate-500 font-normal font-mono truncate">
+                  teacher@openhall.edu
+                </span>
+              </div>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Error Banner */}
       {errorMessage && (
