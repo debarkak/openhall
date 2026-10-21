@@ -35,10 +35,20 @@ export default function TeacherStudioPage() {
         fetch("/api/admin/exams"),
         fetch("/api/auth/me").catch(() => null),
       ]);
-      if (examsRes.ok) {
-        const data = await examsRes.json();
-        setExams(data);
+      if (examsRes.status === 401) {
+        const destination = `${window.location.pathname}${window.location.search}`;
+        window.location.assign(`/login?redirect=${encodeURIComponent(destination)}`);
+        return;
       }
+      if (examsRes.status === 403) {
+        window.location.assign("/lobby");
+        return;
+      }
+      if (!examsRes.ok) {
+        throw new Error("failed to load exam registry");
+      }
+      const data = await examsRes.json();
+      setExams(data);
       if (authRes && authRes.ok) {
         const authData = await authRes.json();
         setCurrentUser(authData.user);

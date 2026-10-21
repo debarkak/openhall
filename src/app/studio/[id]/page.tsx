@@ -133,6 +133,15 @@ export default function QuestionComposerPage({
   const loadExamDetail = async (preserveSectionId?: string) => {
     try {
       const res = await fetch(`/api/admin/exams/${examId}`);
+      if (res.status === 401) {
+        const destination = `${window.location.pathname}${window.location.search}`;
+        window.location.assign(`/login?redirect=${encodeURIComponent(destination)}`);
+        return;
+      }
+      if (res.status === 403) {
+        window.location.assign("/lobby");
+        return;
+      }
       if (res.ok) {
         const data: ExamDetail = await res.json();
         setExam(data);
