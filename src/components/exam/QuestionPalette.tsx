@@ -20,7 +20,7 @@ export const QuestionPalette: React.FC<QuestionPaletteProps> = ({
 }) => {
   return (
     <div className="w-full">
-      <div className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-700">
+      <div className="mb-2 text-xs font-black uppercase tracking-wider text-slate-800">
         Question Palette
       </div>
       <div className="grid grid-cols-5 gap-2">
@@ -29,21 +29,17 @@ export const QuestionPalette: React.FC<QuestionPaletteProps> = ({
           const status = attemptStatuses[idx] || "UNVISITED";
           const displayNum = startIndex + idx;
 
-          // Classic 3D Beveled Styles
-          let btnStyle =
-            "bg-[#e2e8f0] text-slate-800 border-2 border-t-white border-l-white border-r-[#475569] border-b-[#475569] shadow-[1px_1px_0px_#1e293b] font-bold hover:bg-slate-100";
+          // 2005 Glossy Gel Button Styles
+          let btnClass = "retro-btn";
 
           if (status === "ATTEMPTED_SAVED") {
-            btnStyle =
-              "bg-[#15803d] text-white border-2 border-t-[#86efac] border-l-[#86efac] border-r-[#14532d] border-b-[#14532d] shadow-[1px_1px_0px_#052e16] font-bold hover:bg-[#166534]";
+            btnClass = "retro-btn-green";
           } else if (status === "VISITED_UNANSWERED") {
-            btnStyle =
-              "bg-[#ea580c] text-white border-2 border-t-[#fdba74] border-l-[#fdba74] border-r-[#9a3412] border-b-[#9a3412] shadow-[1px_1px_0px_#431407] font-bold hover:bg-[#c2410c]";
+            btnClass = "retro-btn-orange";
           }
 
           if (isActive) {
-            btnStyle =
-              "bg-amber-100 text-slate-900 border-2 border-t-[#1e293b] border-l-[#1e293b] border-r-white border-b-white font-black shadow-inner ring-2 ring-blue-600";
+            btnClass += " ring-2 ring-blue-600 scale-[1.03] z-10 font-black";
           }
 
           return (
@@ -51,7 +47,7 @@ export const QuestionPalette: React.FC<QuestionPaletteProps> = ({
               key={idx}
               type="button"
               onClick={() => onSelectQuestion(idx)}
-              className={`flex h-9 sm:h-10 items-center justify-center rounded-none text-xs sm:text-sm select-none active:translate-x-[1px] active:translate-y-[1px] transition-none ${btnStyle}`}
+              className={`flex h-9 sm:h-10 items-center justify-center text-xs sm:text-sm ${btnClass}`}
               aria-label={`Jump to Question ${displayNum}`}
             >
               Q{displayNum}
