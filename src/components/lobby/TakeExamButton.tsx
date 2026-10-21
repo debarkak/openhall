@@ -12,7 +12,7 @@ interface TakeExamButtonProps {
 
 export function TakeExamButton({
   examId,
-  className = "rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-800 transition inline-flex items-center gap-1.5 cursor-pointer",
+  className = "retro-btn-green px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer",
   children,
 }: TakeExamButtonProps) {
   const router = useRouter();
