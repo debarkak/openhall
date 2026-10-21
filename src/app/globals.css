@@ -6,8 +6,20 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
+/* =========================================================================
+   2005 WEB 2.0 GLOSSY 3D BUTTON & UI SYSTEM
+   ========================================================================= */
+
+/* Iconic 2005 web background: muted blue-gray with subtle diagonal micro-stripe */
 body {
-  background-color: #d8dde4; /* Classic muted desktop gray - reduces glare & AI aesthetic */
+  background-color: #d1d9e2;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.4) 0px,
+    rgba(255, 255, 255, 0.4) 1px,
+    transparent 1px,
+    transparent 6px
+  );
   color: #0f172a;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -21,156 +33,324 @@ body {
   user-select: none;
 }
 
-/* Classic Old-Style 3D Bevel UI System */
-.retro-window {
-  background-color: #e2e8f0;
-  border-style: solid;
-  border-width: 2px;
-  border-color: #ffffff #475569 #475569 #ffffff;
-  box-shadow: 2px 2px 0px rgba(15, 23, 42, 0.45);
-}
-
-.retro-panel {
-  background-color: #f1f5f9;
-  border-style: solid;
-  border-width: 2px;
-  border-color: #ffffff #64748b #64748b #ffffff;
-  box-shadow: 1px 1px 0px rgba(15, 23, 42, 0.25);
-}
-
-.retro-sunken {
-  background-color: #ffffff;
-  border-style: solid;
-  border-width: 2px;
-  border-color: #64748b #ffffff #ffffff #64748b;
-  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.retro-sunken-dark {
-  background-color: #0f172a;
-  color: #38bdf8;
-  border-style: solid;
-  border-width: 2px;
-  border-color: #334155 #020617 #020617 #334155;
-  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.6);
-}
-
-.retro-titlebar {
-  background: linear-gradient(90deg, #1e3a5f 0%, #2b5b84 100%);
-  color: #ffffff;
-  padding: 4px 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  user-select: none;
-}
-
+/* 2005 Glossy Metallic / Silver Button */
 .retro-btn {
-  background-color: #e2e8f0;
-  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 700;
-  border-style: solid;
-  border-width: 2px;
-  border-color: #ffffff #334155 #334155 #ffffff;
-  box-shadow: 1px 1px 0px #0f172a;
-  user-select: none;
+  border-radius: 5px;
+  border: 1px solid #64748b;
+  border-bottom-color: #334155;
+  background: linear-gradient(180deg, 
+    #ffffff 0%, 
+    #edf2f7 49%, 
+    #cbd5e1 50%, 
+    #e2e8f0 100%
+  );
+  color: #1e293b;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 2px 3px rgba(15, 23, 42, 0.25);
   cursor: pointer;
-  transition: all 0.05s ease;
+  user-select: none;
+  transition: all 0.08s ease;
+}
+
+.retro-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, 
+    #ffffff 0%, 
+    #f8fafc 49%, 
+    #dbe3ec 50%, 
+    #edf2f7 100%
+  );
+  box-shadow: 
+    inset 0 1px 0 #ffffff,
+    0 2px 5px rgba(15, 23, 42, 0.35);
 }
 
 .retro-btn:active:not(:disabled) {
-  border-color: #334155 #ffffff #ffffff #334155;
-  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.35);
-  transform: translate(1px, 1px);
+  background: linear-gradient(180deg, 
+    #94a3b8 0%, 
+    #cbd5e1 50%, 
+    #e2e8f0 100%
+  );
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.35),
+    0 1px 1px rgba(0, 0, 0, 0.1);
+  transform: translateY(1px);
 }
 
 .retro-btn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
-  border-color: #cbd5e1 #94a3b8 #94a3b8 #cbd5e1;
   box-shadow: none;
 }
 
+/* 2005 Glossy Aqua Green Button (Iconic 2005 "Download / Start" Gel Button) */
 .retro-btn-green {
-  background-color: #15803d;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  border-radius: 5px;
+  border: 1px solid #14532d;
+  border-bottom-color: #052e16;
+  background: linear-gradient(180deg, 
+    #a7f3d0 0%, 
+    #34d399 49%, 
+    #059669 50%, 
+    #10b981 100%
+  );
   color: #ffffff;
-  font-weight: 700;
-  border-style: solid;
-  border-width: 2px;
-  border-color: #86efac #14532d #14532d #86efac;
-  box-shadow: 1px 1px 0px #052e16;
-  user-select: none;
+  text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.65), 0 1px 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 2px 4px rgba(5, 46, 22, 0.45);
   cursor: pointer;
-  transition: all 0.05s ease;
+  user-select: none;
+  transition: all 0.08s ease;
 }
 
 .retro-btn-green:hover:not(:disabled) {
-  background-color: #166534;
+  background: linear-gradient(180deg, 
+    #bbf7d0 0%, 
+    #4ade80 49%, 
+    #10b981 50%, 
+    #34d399 100%
+  );
+  box-shadow: 
+    inset 0 1px 0 #ffffff,
+    0 2px 6px rgba(5, 46, 22, 0.55);
 }
 
 .retro-btn-green:active:not(:disabled) {
-  border-color: #14532d #86efac #86efac #14532d;
-  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.45);
-  transform: translate(1px, 1px);
+  background: linear-gradient(180deg, 
+    #047857 0%, 
+    #065f46 50%, 
+    #059669 100%
+  );
+  box-shadow: 
+    inset 0 2px 5px rgba(0, 0, 0, 0.5),
+    0 1px 1px rgba(0, 0, 0, 0.1);
+  transform: translateY(1px);
 }
 
+/* 2005 Glossy Flame Orange Button */
 .retro-btn-orange {
-  background-color: #c2410c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  border-radius: 5px;
+  border: 1px solid #7c2d12;
+  border-bottom-color: #431407;
+  background: linear-gradient(180deg, 
+    #fed7aa 0%, 
+    #fb923c 49%, 
+    #ea580c 50%, 
+    #f97316 100%
+  );
   color: #ffffff;
-  font-weight: 700;
-  border-style: solid;
-  border-width: 2px;
-  border-color: #fdba74 #7c2d12 #7c2d12 #fdba74;
-  box-shadow: 1px 1px 0px #431407;
-  user-select: none;
+  text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.7);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 2px 4px rgba(67, 20, 7, 0.45);
   cursor: pointer;
-  transition: all 0.05s ease;
+  user-select: none;
+  transition: all 0.08s ease;
 }
 
 .retro-btn-orange:hover:not(:disabled) {
-  background-color: #9a3412;
+  background: linear-gradient(180deg, 
+    #ffedd5 0%, 
+    #fdba74 49%, 
+    #f97316 50%, 
+    #fb923c 100%
+  );
+  box-shadow: 
+    inset 0 1px 0 #ffffff,
+    0 2px 6px rgba(67, 20, 7, 0.55);
 }
 
 .retro-btn-orange:active:not(:disabled) {
-  border-color: #7c2d12 #fdba74 #fdba74 #7c2d12;
-  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.45);
-  transform: translate(1px, 1px);
+  background: linear-gradient(180deg, 
+    #9a3412 0%, 
+    #7c2d12 50%, 
+    #c2410c 100%
+  );
+  box-shadow: 
+    inset 0 2px 5px rgba(0, 0, 0, 0.5),
+    0 1px 1px rgba(0, 0, 0, 0.1);
+  transform: translateY(1px);
 }
 
+/* 2005 Glossy Aqua Blue Button */
 .retro-btn-cyan {
-  background-color: #0369a1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  border-radius: 5px;
+  border: 1px solid #075985;
+  border-bottom-color: #0c4a6e;
+  background: linear-gradient(180deg, 
+    #bae6fd 0%, 
+    #38bdf8 49%, 
+    #0284c7 50%, 
+    #0ea5e9 100%
+  );
   color: #ffffff;
-  font-weight: 700;
-  border-style: solid;
-  border-width: 2px;
-  border-color: #7dd3fc #075985 #075985 #7dd3fc;
-  box-shadow: 1px 1px 0px #082f49;
-  user-select: none;
+  text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.7);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 2px 4px rgba(12, 74, 110, 0.45);
   cursor: pointer;
-  transition: all 0.05s ease;
+  user-select: none;
+  transition: all 0.08s ease;
 }
 
 .retro-btn-cyan:hover:not(:disabled) {
-  background-color: #075985;
+  background: linear-gradient(180deg, 
+    #e0f2fe 0%, 
+    #7dd3fc 49%, 
+    #0ea5e9 50%, 
+    #38bdf8 100%
+  );
+  box-shadow: 
+    inset 0 1px 0 #ffffff,
+    0 2px 6px rgba(12, 74, 110, 0.55);
 }
 
 .retro-btn-cyan:active:not(:disabled) {
-  border-color: #075985 #7dd3fc #7dd3fc #075985;
-  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.45);
-  transform: translate(1px, 1px);
+  background: linear-gradient(180deg, 
+    #0369a1 0%, 
+    #075985 50%, 
+    #0284c7 100%
+  );
+  box-shadow: 
+    inset 0 2px 5px rgba(0, 0, 0, 0.5),
+    0 1px 1px rgba(0, 0, 0, 0.1);
+  transform: translateY(1px);
 }
 
+/* 2005 Glossy Ruby Red Button */
+.retro-btn-red {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  border-radius: 5px;
+  border: 1px solid #7f1d1d;
+  border-bottom-color: #450a0a;
+  background: linear-gradient(180deg, 
+    #fecaca 0%, 
+    #f87171 49%, 
+    #dc2626 50%, 
+    #ef4444 100%
+  );
+  color: #ffffff;
+  text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.7);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 2px 4px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  user-select: none;
+}
+
+.retro-btn-red:active:not(:disabled) {
+  background: linear-gradient(180deg, #991b1b 0%, #7f1d1d 50%, #b91c1c 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+  transform: translateY(1px);
+}
+
+/* 2005 Web Window Frame with glossy top edge and drop shadow */
+.retro-window {
+  background-color: #f1f5f9;
+  border-radius: 8px;
+  border: 1px solid #64748b;
+  border-top-color: #94a3b8;
+  border-bottom-color: #334155;
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 4px 14px rgba(15, 23, 42, 0.22),
+    0 1px 3px rgba(15, 23, 42, 0.15);
+}
+
+/* 2005 Web Header / Title Bar with Royal Gloss Highlight */
+.retro-titlebar {
+  background: linear-gradient(180deg, 
+    #3b82f6 0%, 
+    #1d4ed8 48%, 
+    #1e40af 50%, 
+    #1e3a8a 100%
+  );
+  color: #ffffff;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #172554;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.6);
+  user-select: none;
+}
+
+/* 2005 Content Panel with soft gradient */
+.retro-panel {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  border-bottom-color: #94a3b8;
+  box-shadow: 
+    inset 0 1px 0 #ffffff,
+    0 1px 3px rgba(15, 23, 42, 0.1);
+}
+
+/* 2005 Sunken Input / Content Well */
+.retro-sunken {
+  background-color: #ffffff;
+  border-radius: 4px;
+  border: 1px solid #94a3b8;
+  border-top-color: #64748b;
+  box-shadow: 
+    inset 0 2px 4px rgba(15, 23, 42, 0.12),
+    0 1px 0 #ffffff;
+}
+
+/* 2005 Dark Terminal / Inset LCD */
+.retro-sunken-dark {
+  background: linear-gradient(180deg, #090d16 0%, #0f172a 100%);
+  color: #38bdf8;
+  border-radius: 4px;
+  border: 1px solid #020617;
+  border-top-color: #000000;
+  box-shadow: 
+    inset 0 2px 5px rgba(0, 0, 0, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 2005 Glossy Form Field */
 .retro-field {
   background-color: #ffffff;
-  border-style: solid;
-  border-width: 2px;
-  border-color: #64748b #ffffff #ffffff #64748b;
-  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  border: 1px solid #94a3b8;
+  border-top-color: #64748b;
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.15);
   color: #0f172a;
 }
-
 .retro-field:focus {
-  outline: 2px solid #0284c7;
+  border-color: #0284c7;
+  box-shadow: 
+    inset 0 1px 2px rgba(15, 23, 42, 0.1),
+    0 0 0 3px rgba(14, 165, 233, 0.25);
+  outline: none;
 }
 
 /* Custom scrollbars with classic tactile feel */
@@ -183,12 +363,12 @@ body {
   border: 1px solid #94a3b8;
 }
 ::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border: 2px solid;
-  border-color: #ffffff #475569 #475569 #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #e2e8f0 49%, #cbd5e1 50%, #94a3b8 100%);
+  border: 1px solid #64748b;
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #f1f5f9;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 49%, #dbe3ec 50%, #cbd5e1 100%);
 }
 
 /* KaTeX custom sizing tweaks */
