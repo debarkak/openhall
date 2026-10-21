@@ -8,14 +8,15 @@ generator client {
 }
 
 model User {
-  id          String        @id @default(cuid())
-  email       String        @unique
-  name        String
-  role        String        @default("CANDIDATE") // "ADMIN", "TEACHER", "CANDIDATE"
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  hostedExams Exam[]        @relation("HostRelation")
-  sessions    ExamSession[]
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String
+  role         String        @default("CANDIDATE") // "ADMIN", "TEACHER", "CANDIDATE"
+  passwordHash String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  hostedExams  Exam[]        @relation("HostRelation")
+  sessions     ExamSession[]
 }
 
 model Exam {

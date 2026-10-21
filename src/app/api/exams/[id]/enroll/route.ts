@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -18,16 +19,27 @@ export async function POST(
       return NextResponse.json({ error: "Exam not found" }, { status: 404 });
     }
 
-    // Find default candidate
-    let candidate = await prisma.user.findFirst({
-      where: { role: "CANDIDATE" },
-    });
+    // Check if authenticated session user exists
+    const sessionUser = await getCurrentUser();
+    let candidate = null;
+
+    if (sessionUser) {
+      candidate = await prisma.user.findUnique({
+        where: { id: sessionUser.id },
+      });
+    }
+
+    if (!candidate) {
+      candidate = await prisma.user.findFirst({
+        where: { role: "CANDIDATE" },
+      });
+    }
 
     if (!candidate) {
       candidate = await prisma.user.create({
         data: {
-          email: "debarkak@murena.io",
-          name: "Debarka Kundu",
+          email: "student@openhall.edu",
+          name: "student debarka",
           role: "CANDIDATE",
         },
       });

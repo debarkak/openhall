@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, GraduationCap, Laptop, ShieldCheck } from "lucide-react";
+import { ArrowRight, GraduationCap, Laptop, ShieldCheck, KeyRound } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -15,6 +15,13 @@ export default function HomePage() {
             </span>
           </div>
           <div className="flex items-center gap-1">
+            <Link
+              href="/login"
+              className="retro-btn px-2 py-0.5 text-[10px] text-slate-800 font-bold inline-flex items-center gap-1 mr-1"
+            >
+              <KeyRound className="h-3 w-3" />
+              login
+            </Link>
             <span className="retro-btn flex h-5 w-5 items-center justify-center text-[10px] leading-none">
               _
             </span>
@@ -39,8 +46,14 @@ export default function HomePage() {
                   self-hosted test runner and question composer
                 </p>
               </div>
-              <div className="hidden sm:block retro-sunken-dark px-2.5 py-1 text-center font-mono text-xs">
-                <span className="text-emerald-400">status: ready</span>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="retro-btn px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1 text-slate-800"
+                >
+                  <KeyRound className="h-3.5 w-3.5 text-slate-700" />
+                  credentials login
+                </Link>
               </div>
             </div>
 
@@ -105,8 +118,8 @@ export default function HomePage() {
           {/* Status Bar */}
           <div className="retro-sunken mt-5 flex flex-wrap items-center justify-between bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
             <span>self-hosted next.js &amp; sqlite</span>
+            <span>encrypted salted scrypt auth</span>
             <span>fullscreen lockdown active</span>
-            <span>port 3000</span>
           </div>
         </div>
       </div>

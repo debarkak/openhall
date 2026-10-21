@@ -1,22 +1,35 @@
 import React from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
 import { Play, RotateCcw, Lock, GraduationCap, FileText, Info } from "lucide-react";
 import { TakeExamButton } from "@/components/lobby/TakeExamButton";
+import { AuthStatusButton } from "@/components/auth/AuthStatusButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function CandidateLobbyPage() {
-  // Find primary candidate
-  let candidate = await prisma.user.findFirst({
-    where: { role: "CANDIDATE" },
-  });
+  const sessionUser = await getCurrentUser();
+
+  // Find candidate by session user or fallback
+  let candidate = null;
+  if (sessionUser) {
+    candidate = await prisma.user.findUnique({
+      where: { id: sessionUser.id },
+    });
+  }
+
+  if (!candidate) {
+    candidate = await prisma.user.findFirst({
+      where: { role: "CANDIDATE" },
+    });
+  }
 
   if (!candidate) {
     candidate = await prisma.user.create({
       data: {
-        email: "debarkak@murena.io",
-        name: "debarka kundu",
+        email: "student@openhall.edu",
+        name: "student debarka",
         role: "CANDIDATE",
       },
     });
@@ -77,6 +90,7 @@ export default async function CandidateLobbyPage() {
           >
             studio &rarr;
           </Link>
+          <AuthStatusButton user={sessionUser} />
         </div>
       </header>
 

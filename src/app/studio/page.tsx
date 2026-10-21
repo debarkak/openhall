@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Clock, ArrowRight, Shield, Trash2, Eye, Laptop } from "lucide-react";
+import { AuthStatusButton } from "@/components/auth/AuthStatusButton";
+import { SessionUser } from "@/lib/auth";
 
 interface ExamItem {
   id: string;
@@ -18,6 +20,7 @@ interface ExamItem {
 }
 
 export default function TeacherStudioPage() {
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [exams, setExams] = useState<ExamItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -28,10 +31,17 @@ export default function TeacherStudioPage() {
 
   const loadExams = async () => {
     try {
-      const res = await fetch("/api/admin/exams");
-      if (res.ok) {
-        const data = await res.json();
+      const [examsRes, authRes] = await Promise.all([
+        fetch("/api/admin/exams"),
+        fetch("/api/auth/me").catch(() => null),
+      ]);
+      if (examsRes.ok) {
+        const data = await examsRes.json();
         setExams(data);
+      }
+      if (authRes && authRes.ok) {
+        const authData = await authRes.json();
+        setCurrentUser(authData.user);
       }
     } catch (err) {
       console.error("failed to load exams:", err);
@@ -121,6 +131,11 @@ export default function TeacherStudioPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {currentUser && (
+            <span className="hidden sm:inline-block text-xs font-bold text-slate-200">
+              {currentUser.name.toLowerCase()}
+            </span>
+          )}
           <Link
             href="/lobby"
             className="retro-btn px-2.5 py-1 text-[11px] font-bold text-slate-900 inline-flex items-center gap-1.5 hover:bg-slate-100"
@@ -136,6 +151,7 @@ export default function TeacherStudioPage() {
             <Plus className="h-3.5 w-3.5" />
             new test
           </button>
+          <AuthStatusButton user={currentUser} />
         </div>
       </header>
 
