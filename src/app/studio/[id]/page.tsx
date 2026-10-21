@@ -17,7 +17,6 @@ import {
   X,
   ChevronDown,
   Sparkles,
-  Hash,
 } from "lucide-react";
 
 interface OptionItem {
@@ -315,8 +314,6 @@ export default function QuestionComposerPage({
             : "Question saved! Ready for next question below.",
         });
         await loadExamDetail(selectedSectionId);
-        
-        // Immediately ready the next question draft inside this same section
         handleNewQuestion(selectedSectionId);
       } else {
         const errData = await res.json().catch(() => ({}));
@@ -351,9 +348,11 @@ export default function QuestionComposerPage({
 
   if (loading || !exam) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-center font-semibold text-slate-500">
-          Loading Question Composer...
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="retro-window p-6 text-center max-w-xs w-full">
+          <div className="retro-sunken-dark p-3 font-mono text-xs text-emerald-400">
+            LOADING QUESTION COMPOSER...
+          </div>
         </div>
       </div>
     );
@@ -363,54 +362,54 @@ export default function QuestionComposerPage({
   const activeEmoji = activeSection ? getSubjectEmoji(activeSection.title) : "📁";
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen flex flex-col font-sans pb-8">
       {/* Studio Header */}
-      <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-slate-200 bg-white px-5 shadow-xs">
+      <header className="retro-titlebar sticky top-0 z-30 h-12 shadow-sm">
         <div className="flex items-center gap-3">
           <Link
             href="/studio"
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+            className="retro-btn px-2.5 py-1 text-[11px] font-bold text-slate-900 inline-flex items-center gap-1 hover:bg-slate-100"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Studio
+            <ArrowLeft className="h-3 w-3" />
+            Studio
           </Link>
-          <span className="text-sm font-bold text-slate-800">
-            {exam.title} <span className="font-mono text-xs text-brand-cyan">({exam.accessCode})</span>
+          <span className="text-xs sm:text-sm font-black text-white uppercase tracking-tight">
+            {exam.title} <span className="font-mono text-sky-200">[{exam.accessCode}]</span>
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Link
             href={`/proctor/${exam.id}`}
-            className="flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3.5 py-1.5 text-xs font-bold text-brand-orange hover:bg-orange-100 transition"
+            className="retro-btn-cyan px-2.5 py-1 text-[11px] inline-flex items-center gap-1 font-bold"
           >
-            <Shield className="h-4 w-4" />
-            Live Proctor
+            <Shield className="h-3.5 w-3.5" />
+            Proctor
           </Link>
         </div>
       </header>
 
       {/* Main Composer Workspace */}
-      <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
+      <div className="flex flex-1 flex-col md:flex-row p-4 gap-4 max-w-7xl mx-auto w-full">
         {/* Left Sidebar: Discord-Style Category & Channels Tree */}
-        <aside className="w-full md:w-80 shrink-0 border-r border-slate-200 bg-white p-3 overflow-y-auto flex flex-col select-none">
+        <aside className="retro-window w-full md:w-80 shrink-0 p-3 flex flex-col select-none">
           {/* Header Action */}
-          <div className="flex items-center justify-between px-2 pb-2.5 mb-2 border-b border-slate-100">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-              Categories &amp; Questions
+          <div className="flex items-center justify-between pb-2 mb-2 border-b-2 border-slate-300">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-800">
+              Categories &amp; Channels
             </span>
             <button
               type="button"
               onClick={() => setIsSectionModalOpen(true)}
-              className="flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-700 hover:bg-brand-green hover:text-white transition cursor-pointer"
+              className="retro-btn px-2 py-0.5 text-[10px] font-bold inline-flex items-center gap-1 hover:bg-slate-100"
               title="Add Subject Category"
             >
-              <Plus className="h-3.5 w-3.5" /> Category
+              <Plus className="h-3 w-3" /> Category
             </button>
           </div>
 
           {/* Discord-Style Hierarchical Tree */}
-          <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+          <div className="space-y-2 flex-1 overflow-y-auto pr-1">
             {exam.sections.map((sec) => {
               const isCollapsed = !!collapsedSections[sec.id];
               const isCurrentSection = selectedSectionId === sec.id;
@@ -418,15 +417,15 @@ export default function QuestionComposerPage({
               const isEditing = editingSectionId === sec.id;
 
               return (
-                <div key={sec.id} className="space-y-0.5">
-                  {/* Category Header (Discord Style: [Emoji] | [Name] ⌄) */}
+                <div key={sec.id} className="retro-panel p-2 space-y-1">
+                  {/* Category Header */}
                   {isEditing ? (
-                    <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg">
+                    <div className="flex items-center gap-1 bg-white p-1 retro-sunken">
                       <input
                         type="text"
                         value={editingSectionTitle}
                         onChange={(e) => setEditingSectionTitle(e.target.value)}
-                        className="flex-1 rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-900 focus:outline-none"
+                        className="flex-1 text-xs text-slate-900 focus:outline-none px-1"
                         autoFocus
                         onKeyDown={(e) => {
                           if (e.key === "Enter") handleUpdateSectionTitle(sec.id);
@@ -436,55 +435,52 @@ export default function QuestionComposerPage({
                       <button
                         type="button"
                         onClick={() => handleUpdateSectionTitle(sec.id)}
-                        className="rounded p-1 bg-emerald-500 text-white hover:bg-emerald-600"
+                        className="retro-btn-green px-1.5 py-0.5 text-[10px]"
                       >
                         <Check className="h-3 w-3" />
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingSectionId(null)}
-                        className="rounded p-1 bg-slate-200 text-slate-600"
+                        className="retro-btn px-1.5 py-0.5 text-[10px]"
                       >
                         <X className="h-3 w-3" />
                       </button>
                     </div>
                   ) : (
                     <div
-                      className="group flex items-center justify-between px-2 py-1 rounded-md text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 cursor-pointer transition"
+                      className="group flex items-center justify-between px-1.5 py-1 text-xs font-bold text-slate-800 hover:bg-slate-200 cursor-pointer select-none"
                       onClick={() => toggleCategoryCollapse(sec.id)}
                     >
                       <div className="flex items-center gap-1.5 truncate">
-                        <span className="text-base shrink-0 leading-none">{emoji}</span>
-                        <span className="text-slate-300 font-light">|</span>
-                        <span className="truncate tracking-tight font-semibold text-slate-700">
+                        <span className="text-sm shrink-0 leading-none">{emoji}</span>
+                        <span className="text-slate-400 font-light">|</span>
+                        <span className="truncate tracking-tight font-bold text-slate-900">
                           {sec.title}
                         </span>
                         <ChevronDown
-                          className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
+                          className={`h-3.5 w-3.5 text-slate-600 transition-transform duration-150 shrink-0 ${
                             isCollapsed ? "-rotate-90" : ""
                           }`}
                         />
                       </div>
 
                       <div className="flex items-center gap-1">
-                        <span className="text-[10px] font-mono text-slate-400 group-hover:hidden">
+                        <span className="retro-sunken px-1 text-[10px] font-mono text-slate-700 bg-white">
                           {sec.questions.length}
                         </span>
-                        {/* Hover Quick Actions */}
                         <div className="hidden group-hover:flex items-center gap-0.5">
-                          {/* Quick Add Question to this Section */}
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               startDraftInSection(sec.id);
                             }}
-                            className="p-1 rounded hover:bg-emerald-100 hover:text-emerald-700 text-slate-400 transition"
-                            title={`Add new question to ${sec.title}`}
+                            className="retro-btn p-0.5 text-slate-800"
+                            title={`Add question to ${sec.title}`}
                           >
-                            <Plus className="h-3.5 w-3.5" />
+                            <Plus className="h-3 w-3" />
                           </button>
-                          {/* Rename Section */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -492,12 +488,11 @@ export default function QuestionComposerPage({
                               setEditingSectionId(sec.id);
                               setEditingSectionTitle(sec.title);
                             }}
-                            className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition"
-                            title="Rename Category"
+                            className="retro-btn p-0.5 text-slate-800"
+                            title="Rename"
                           >
                             <Pencil className="h-3 w-3" />
                           </button>
-                          {/* Delete Section if Empty */}
                           {sec.questions.length === 0 && exam.sections.length > 1 && (
                             <button
                               type="button"
@@ -505,8 +500,8 @@ export default function QuestionComposerPage({
                                 e.stopPropagation();
                                 handleDeleteSection(sec.id, sec.title);
                               }}
-                              className="p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-600 transition"
-                              title="Delete Empty Category"
+                              className="retro-btn p-0.5 text-red-700 hover:bg-red-100"
+                              title="Delete"
                             >
                               <Trash2 className="h-3 w-3" />
                             </button>
@@ -516,10 +511,9 @@ export default function QuestionComposerPage({
                     </div>
                   )}
 
-                  {/* Nested Questions Channels (Shown when expanded) */}
+                  {/* Nested Questions Channels */}
                   {!isCollapsed && (
-                    <div className="ml-2.5 pl-2.5 border-l-2 border-slate-100 space-y-0.5 pt-0.5">
-                      {/* Committed Questions */}
+                    <div className="pl-2 border-l-2 border-slate-400 space-y-1 pt-1">
                       {sec.questions.map((q, idx) => {
                         const isSelected = selectedQuestion?.id === q.id;
                         return (
@@ -527,18 +521,16 @@ export default function QuestionComposerPage({
                             key={q.id}
                             type="button"
                             onClick={() => loadQuestionIntoForm(q, sec.id)}
-                            className={`w-full text-left flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs transition cursor-pointer ${
+                            className={`w-full text-left flex items-center gap-1.5 px-2 py-1 text-xs cursor-pointer select-none ${
                               isSelected
-                                ? "bg-slate-900 text-white font-semibold shadow-xs"
-                                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                ? "retro-sunken bg-amber-100 text-slate-900 font-black border-slate-700"
+                                : "retro-btn bg-slate-100 hover:bg-white text-slate-700"
                             }`}
                           >
-                            <span className={`font-mono text-xs font-bold shrink-0 ${
-                              isSelected ? "text-brand-green" : "text-slate-400"
-                            }`}>
+                            <span className="font-mono text-xs font-bold shrink-0 text-slate-500">
                               #
                             </span>
-                            <span className="font-semibold shrink-0 text-[11px]">
+                            <span className="font-bold shrink-0 text-[11px]">
                               Q{idx + 1}
                             </span>
                             <span className="truncate flex-1">
@@ -548,28 +540,27 @@ export default function QuestionComposerPage({
                         );
                       })}
 
-                      {/* LIVE REAL-TIME DRAFT CHANNEL */}
+                      {/* LIVE DRAFT CHANNEL */}
                       {isCurrentSection && !selectedQuestion && (
-                        <div className="w-full flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs bg-emerald-50 text-emerald-900 border border-emerald-300 font-semibold shadow-xs">
-                          <span className="font-mono text-xs font-bold text-emerald-600 shrink-0">
+                        <div className="w-full flex items-center gap-1.5 px-2 py-1 text-xs retro-sunken bg-emerald-100 text-emerald-900 border-emerald-600 font-bold">
+                          <span className="font-mono text-xs font-bold text-emerald-700 shrink-0">
                             #
                           </span>
-                          <span className="font-bold text-emerald-700 shrink-0 text-[11px]">
+                          <span className="font-black text-emerald-800 shrink-0 text-[11px]">
                             Q{sec.questions.length + 1}
                           </span>
-                          <span className="truncate flex-1 text-slate-700 font-medium">
+                          <span className="truncate flex-1 text-slate-800 font-semibold">
                             {stem.trim() || "(Live draft...)"}
                           </span>
-                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Active Draft" />
+                          <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
                         </div>
                       )}
 
-                      {/* Empty Category Prompt */}
                       {sec.questions.length === 0 && (!isCurrentSection || selectedQuestion) && (
                         <button
                           type="button"
                           onClick={() => startDraftInSection(sec.id)}
-                          className="w-full text-left flex items-center gap-1 px-2 py-1 text-[11px] text-slate-400 hover:text-emerald-700 transition"
+                          className="retro-btn w-full text-left flex items-center gap-1 px-2 py-1 text-[11px] text-slate-600"
                         >
                           <Plus className="h-3 w-3" /> Add first question
                         </button>
@@ -583,28 +574,25 @@ export default function QuestionComposerPage({
         </aside>
 
         {/* Center/Right: Visual Question Composer & Real-Time KaTeX Preview */}
-        <main className="flex-1 p-6 overflow-y-auto bg-slate-50">
-          <form onSubmit={handleSaveQuestion} className="max-w-4xl mx-auto space-y-6">
+        <main className="retro-window flex-1 p-5 overflow-y-auto">
+          <form onSubmit={handleSaveQuestion} className="space-y-4">
             {/* Header info & Action Buttons */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="retro-panel flex flex-wrap items-center justify-between gap-3 p-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-slate-900">
+                  <h2 className="text-sm sm:text-base font-black text-slate-900 uppercase">
                     {selectedQuestion ? `Editing Question` : `Compose New Question`}
                   </h2>
                   {!selectedQuestion && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      Live Mode
+                    <span className="retro-btn bg-emerald-100 text-emerald-900 px-2 py-0.5 text-[10px] font-black">
+                      ● LIVE DRAFT
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-slate-500">Category Channel:</span>
-                  <span className="inline-flex items-center gap-1 rounded bg-slate-200/80 px-2 py-0.5 text-xs font-bold text-slate-800">
-                    <span>{activeEmoji}</span>
-                    <span>|</span>
-                    <span>{activeSection?.title || "No category selected"}</span>
+                <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-600">
+                  <span className="font-bold">CATEGORY:</span>
+                  <span className="retro-sunken px-2 py-0.5 text-[11px] font-bold text-slate-800 bg-white">
+                    {activeEmoji} | {activeSection?.title || "None"}
                   </span>
                 </div>
               </div>
@@ -614,23 +602,23 @@ export default function QuestionComposerPage({
                   <button
                     type="button"
                     onClick={() => handleDeleteQuestion(selectedQuestion.id)}
-                    className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold text-red-600 hover:bg-red-100 transition cursor-pointer"
+                    className="retro-btn text-red-700 hover:bg-red-100 px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1"
                   >
-                    <Trash2 className="h-4 w-4" />
-                    Delete Question
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => handleNewQuestion(selectedSectionId)}
-                  className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                  className="retro-btn px-3.5 py-1.5 text-xs font-bold"
                 >
-                  Clear / New
+                  Clear Form
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="flex items-center gap-2 rounded-xl bg-brand-green px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-brand-green-hover active:scale-95 transition disabled:opacity-50 cursor-pointer"
+                  className="retro-btn-green px-5 py-1.5 text-xs sm:text-sm font-black inline-flex items-center gap-1.5"
                 >
                   <Save className="h-4 w-4" />
                   {isSaving ? "Saving..." : selectedQuestion ? "Update Question" : "Save Question"}
@@ -641,27 +629,27 @@ export default function QuestionComposerPage({
             {/* Notification / Toast Banner */}
             {feedback && (
               <div
-                className={`flex items-center gap-2.5 rounded-xl p-3.5 text-sm font-semibold transition shadow-xs ${
+                className={`retro-panel p-3 text-xs font-bold flex items-center gap-2 ${
                   feedback.type === "success"
-                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                    : "bg-red-50 text-red-800 border border-red-200"
+                    ? "bg-emerald-100 text-emerald-950 border-emerald-500"
+                    : "bg-red-100 text-red-950 border-red-500"
                 }`}
               >
                 {feedback.type === "success" ? (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
                 ) : (
-                  <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+                  <AlertTriangle className="h-4 w-4 text-red-700 shrink-0" />
                 )}
                 <span>{feedback.message}</span>
               </div>
             )}
 
             {/* Math Macro Toolbar */}
-            <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
-              <span className="block text-[11px] font-bold uppercase text-slate-400 mb-2">
-                KaTeX Formula Bar (Click symbol to insert into stem)
+            <div className="retro-panel p-3">
+              <span className="block text-[10px] font-black uppercase text-slate-700 mb-1.5">
+                KaTeX Formula Shortcut Bar (Click to insert):
               </span>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1">
                 {[
                   { label: "Fraction \\frac", macro: "$\\frac{a}{b}$" },
                   { label: "Square Root \\sqrt", macro: "$\\sqrt{x}$" },
@@ -683,7 +671,7 @@ export default function QuestionComposerPage({
                     key={i}
                     type="button"
                     onClick={() => insertMacro(item.macro)}
-                    className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-mono font-medium text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition cursor-pointer"
+                    className="retro-btn px-2 py-0.5 text-[11px] font-mono hover:bg-white"
                   >
                     {item.label}
                   </button>
@@ -692,43 +680,43 @@ export default function QuestionComposerPage({
             </div>
 
             {/* Question Stem Text Area */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
-                Question Stem (Supports Markdown &amp; LaTeX $inline$ or $$display$$)
+            <div className="retro-panel p-4">
+              <label className="block text-[11px] font-black uppercase text-slate-800 mb-1.5">
+                Question Stem (Supports LaTeX $formula$ or Markdown):
               </label>
               <textarea
                 rows={4}
                 value={stem}
                 onChange={(e) => setStem(e.target.value)}
                 placeholder="Type question stem here. E.g. Simplify $\frac{p + \sqrt{p^2-q^2}}{p - \sqrt{p^2-q^2}}$..."
-                className="w-full rounded-lg border border-slate-300 p-3 font-mono text-sm leading-relaxed focus:border-brand-green focus:outline-none"
+                className="retro-field w-full text-xs font-mono p-2.5"
               />
 
               {/* Real-Time Live KaTeX Preview */}
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <span className="text-[11px] font-bold uppercase text-slate-400 mb-1 flex items-center gap-1">
-                  <Eye className="h-3 w-3" /> Real-Time Live Preview
+              <div className="mt-3 pt-3 border-t border-slate-300">
+                <span className="text-[10px] font-black uppercase text-slate-600 mb-1 flex items-center gap-1">
+                  <Eye className="h-3 w-3" /> Live Render Preview:
                 </span>
-                <div className="rounded-lg bg-slate-50 p-4 min-h-[50px] border border-slate-200/60">
+                <div className="retro-sunken bg-white p-3 min-h-[44px] text-xs sm:text-sm text-slate-900">
                   <KaTeXRenderer content={stem || "Live formula preview will appear here..."} />
                 </div>
               </div>
             </div>
 
             {/* Diagram URL Field */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
-                Diagram / Vector Graphic URL (Optional)
+            <div className="retro-panel p-4">
+              <label className="block text-[11px] font-black uppercase text-slate-800 mb-1.5">
+                Diagram / Vector Graphic URL (Optional):
               </label>
               <input
                 type="text"
                 value={diagramUrl}
                 onChange={(e) => setDiagramUrl(e.target.value)}
-                placeholder="https://example.com/diagram.png or image path"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:outline-none"
+                placeholder="https://example.com/diagram.png or relative path"
+                className="retro-field w-full text-xs"
               />
               {diagramUrl && (
-                <div className="mt-3 p-2 bg-slate-50 rounded-lg border border-slate-200 flex justify-center">
+                <div className="retro-sunken mt-3 p-2 bg-slate-50 flex justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={diagramUrl} alt="Diagram preview" className="max-h-40 object-contain" />
                 </div>
@@ -736,10 +724,10 @@ export default function QuestionComposerPage({
             </div>
 
             {/* Options Manager */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-              <div className="flex items-center justify-between mb-4">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Multiple Choice Options (Select radio to set authoritative answer key)
+            <div className="retro-panel p-4">
+              <div className="flex items-center justify-between mb-3 border-b border-slate-300 pb-2">
+                <label className="block text-[11px] font-black uppercase text-slate-800">
+                  Multiple Choice Options (Select radio to set correct key):
                 </label>
                 {options.length < 6 && (
                   <button
@@ -750,24 +738,23 @@ export default function QuestionComposerPage({
                         { orderIndex: prev.length, text: "", isCorrect: false },
                       ])
                     }
-                    className="text-xs font-bold text-brand-green hover:underline flex items-center gap-1 cursor-pointer"
+                    className="retro-btn px-2 py-0.5 text-[10px] font-bold inline-flex items-center gap-1"
                   >
                     <Plus className="h-3 w-3" /> Add Choice
                   </button>
                 )}
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {options.map((opt, optIdx) => (
                   <div
                     key={optIdx}
-                    className={`flex items-center gap-3 p-2.5 rounded-lg border transition ${
+                    className={`flex items-center gap-2.5 p-2 ${
                       opt.isCorrect
-                        ? "border-brand-green bg-emerald-50/40"
-                        : "border-slate-200 bg-slate-50/50"
+                        ? "retro-sunken bg-emerald-50 border-emerald-600 font-bold"
+                        : "retro-panel bg-white"
                     }`}
                   >
-                    {/* Radio Button for Key Selection */}
                     <input
                       type="radio"
                       name="correctKey"
@@ -777,11 +764,14 @@ export default function QuestionComposerPage({
                           prev.map((o, i) => ({ ...o, isCorrect: i === optIdx }))
                         )
                       }
-                      className="h-4 w-4 text-brand-green focus:ring-brand-green cursor-pointer"
+                      className="h-4 w-4 text-emerald-700 cursor-pointer"
                       title="Set as correct answer"
                     />
 
-                    {/* Option Text Input */}
+                    <span className="retro-btn flex h-6 w-6 items-center justify-center text-xs font-black">
+                      {String.fromCharCode(65 + optIdx)}
+                    </span>
+
                     <input
                       type="text"
                       value={opt.text}
@@ -791,28 +781,26 @@ export default function QuestionComposerPage({
                           prev.map((o, i) => (i === optIdx ? { ...o, text: val } : o))
                         );
                       }}
-                      placeholder={`Choice ${optIdx + 1} text or formula (e.g. $\\frac{p^2}{q^2}$)`}
-                      className="flex-1 rounded border border-slate-300 px-3 py-1.5 text-sm focus:border-brand-green focus:outline-none"
+                      placeholder={`Choice ${optIdx + 1} formula (e.g. $\\frac{p^2}{q^2}$)`}
+                      className="retro-field flex-1 text-xs py-1"
                     />
 
-                    {/* Mini KaTeX Preview */}
                     {opt.text && opt.text.includes("$") && (
-                      <div className="px-2 py-1 bg-white rounded border border-slate-200 text-xs">
+                      <div className="retro-sunken bg-white px-2 py-0.5 text-xs">
                         <KaTeXRenderer content={opt.text} />
                       </div>
                     )}
 
-                    {/* Remove Option */}
                     {options.length > 2 && (
                       <button
                         type="button"
                         onClick={() =>
                           setOptions((prev) => prev.filter((_, i) => i !== optIdx))
                         }
-                        className="text-slate-400 hover:text-red-500 p-1 cursor-pointer"
+                        className="retro-btn p-1 text-red-700 hover:bg-red-100"
                         title="Remove choice"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
                   </div>
@@ -821,16 +809,16 @@ export default function QuestionComposerPage({
             </div>
 
             {/* Explanation / Solution Note */}
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
-                Solution Explanation (Disclosed on Student Scorecard post-submission)
+            <div className="retro-panel p-4">
+              <label className="block text-[11px] font-black uppercase text-slate-800 mb-1.5">
+                Solution Explanation (Shown on Candidate Scorecard):
               </label>
               <textarea
                 rows={3}
                 value={solutionExplanation}
                 onChange={(e) => setSolutionExplanation(e.target.value)}
                 placeholder="Step-by-step mathematical reasoning or physics derivation..."
-                className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:border-brand-green focus:outline-none"
+                className="retro-field w-full text-xs p-2.5"
               />
             </div>
           </form>
@@ -839,67 +827,70 @@ export default function QuestionComposerPage({
 
       {/* Add Category Presets Modal */}
       {isSectionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-brand-green" /> Add Category Channel
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+          <div className="retro-window w-full max-w-md overflow-hidden">
+            <div className="retro-titlebar">
+              <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                Add Category Channel
+              </span>
               <button
                 type="button"
                 onClick={() => setIsSectionModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="retro-btn flex h-5 w-5 items-center justify-center text-[10px] text-red-700"
               >
-                <X className="h-5 w-5" />
+                ✕
               </button>
             </div>
 
-            <p className="mt-2 text-xs text-slate-500">
-              Choose a standard subject category, or type a custom channel name below:
-            </p>
+            <div className="p-4 sm:p-5">
+              <p className="text-xs text-slate-700 mb-3">
+                Select a subject preset, or enter a custom category name:
+              </p>
 
-            {/* Presets Grid */}
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {SUBJECT_PRESETS.map((preset, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleCreateSection(preset.title)}
-                  className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left text-xs font-bold text-slate-800 hover:border-brand-green hover:bg-emerald-50 transition cursor-pointer"
-                >
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className="text-base">{preset.emoji}</span>
-                    <span className="truncate">{preset.title}</span>
-                  </div>
-                  <Plus className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                </button>
-              ))}
-            </div>
+              {/* Presets Grid */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {SUBJECT_PRESETS.map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleCreateSection(preset.title)}
+                    className="retro-btn flex items-center justify-between p-2 text-left text-xs font-bold hover:bg-white"
+                  >
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="text-sm">{preset.emoji}</span>
+                      <span className="truncate">{preset.title}</span>
+                    </div>
+                    <Plus className="h-3 w-3 text-slate-600 shrink-0" />
+                  </button>
+                ))}
+              </div>
 
-            {/* Custom Category Input */}
-            <div className="mt-4 pt-4 border-t border-slate-100">
-              <label className="block text-[11px] font-bold uppercase text-slate-500 mb-1.5">
-                Or Custom Category Name:
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={customSectionInput}
-                  onChange={(e) => setCustomSectionInput(e.target.value)}
-                  placeholder="e.g. Updates, Social Science, Logic"
-                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-brand-green focus:outline-none"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleCreateSection(customSectionInput);
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleCreateSection(customSectionInput)}
-                  disabled={!customSectionInput.trim()}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-40 transition cursor-pointer"
-                >
-                  Create
-                </button>
+              {/* Custom Category Input */}
+              <div className="pt-3 border-t border-slate-300">
+                <label className="block text-[10px] font-bold uppercase text-slate-700 mb-1">
+                  Or Custom Channel Name:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={customSectionInput}
+                    onChange={(e) => setCustomSectionInput(e.target.value)}
+                    placeholder="e.g. Updates, Social Science, Logic"
+                    className="retro-field flex-1 text-xs py-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleCreateSection(customSectionInput);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleCreateSection(customSectionInput)}
+                    disabled={!customSectionInput.trim()}
+                    className="retro-btn-green px-4 py-1.5 text-xs font-bold disabled:opacity-50"
+                  >
+                    Create
+                  </button>
+                </div>
               </div>
             </div>
           </div>
