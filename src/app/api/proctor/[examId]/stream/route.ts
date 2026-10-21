@@ -1,5 +1,6 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { subscribeProctor } from "@/lib/proctorBroadcast";
+import { requireStaffAccess } from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { examId: string } }
 ) {
+  const authError = await requireStaffAccess();
+  if (authError) return authError;
+
   const examId = params.examId;
 
   const responseStream = new TransformStream();

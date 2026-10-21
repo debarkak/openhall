@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireStaffAccess } from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const authError = await requireStaffAccess();
+  if (authError) return authError;
+
   try {
     const exam = await prisma.exam.findUnique({
       where: { id: params.id },
@@ -59,6 +63,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const authError = await requireStaffAccess();
+  if (authError) return authError;
+
   try {
     const body = await request.json();
     const { title, description, instructions, durationSeconds, positiveMarks, negativePenalty, isLive } = body;
@@ -87,6 +94,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const authError = await requireStaffAccess();
+  if (authError) return authError;
+
   try {
     const examId = params.id;
 

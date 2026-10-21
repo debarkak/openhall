@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireStaffAccess } from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const authError = await requireStaffAccess();
+  if (authError) return authError;
+
   try {
     const exams = await prisma.exam.findMany({
       orderBy: { createdAt: "desc" },
@@ -30,6 +34,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = await requireStaffAccess();
+  if (authError) return authError;
+
   try {
     const body = await request.json();
     const { title, description, instructions, durationSeconds, positiveMarks, negativePenalty, accessCode } = body;
