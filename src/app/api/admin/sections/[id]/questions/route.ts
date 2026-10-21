@@ -29,17 +29,20 @@ export async function POST(
     });
 
     if (Array.isArray(options)) {
+      let optOrder = 0;
       for (let i = 0; i < options.length; i++) {
         const opt = options[i];
-        await prisma.option.create({
-          data: {
-            questionId: question.id,
-            orderIndex: i,
-            text: opt.text || `Option ${i + 1}`,
-            imageUrl: opt.imageUrl,
-            isCorrect: !!opt.isCorrect,
-          },
-        });
+        if (opt.text && opt.text.trim()) {
+          await prisma.option.create({
+            data: {
+              questionId: question.id,
+              orderIndex: optOrder++,
+              text: opt.text.trim(),
+              imageUrl: opt.imageUrl || null,
+              isCorrect: !!opt.isCorrect,
+            },
+          });
+        }
       }
     }
 
