@@ -29,11 +29,11 @@ export function broadcastProctorEvent(
   if (!set || set.size === 0) return;
 
   const payload = `data: ${JSON.stringify(event)}\n\n`;
-  for (const cb of set) {
+  set.forEach((cb) => {
     try {
       cb(payload);
     } catch {
       // Listener dropped
     }
-  }
+  });
 }
