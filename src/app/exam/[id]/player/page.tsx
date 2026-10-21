@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { KaTeXRenderer } from "@/components/katex/KaTeXRenderer";
 import { CircularProgressGauge } from "@/components/exam/CircularProgressGauge";
@@ -11,7 +11,7 @@ import { SubmissionSpinner } from "@/components/exam/SubmissionSpinner";
 import { useBrowserLockdown } from "@/lib/anticheat";
 import { persistAttemptLocally, getLocalAttempts } from "@/lib/storage";
 import { CandidateExamManifest, ItemStatus } from "@/lib/types";
-import { Check, Info, AlertTriangle, X, ShieldAlert, Maximize2, XCircle } from "lucide-react";
+import { Info, AlertTriangle, ShieldAlert, Maximize2, XCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function ExamPlayerPage({
@@ -74,7 +74,7 @@ export default function ExamPlayerPage({
       try {
         const res = await fetch(`/api/sessions/${sessionId}/manifest`);
         if (!res.ok) {
-          throw new Error("Failed to load exam session");
+          throw new Error("failed to load exam session");
         }
         const data: CandidateExamManifest = await res.json();
         setManifest(data);
@@ -92,7 +92,7 @@ export default function ExamPlayerPage({
 
         setLoading(false);
       } catch (err) {
-        console.error("Exam load failed:", err);
+        console.error("exam load failed:", err);
       }
     }
     loadExam();
@@ -144,7 +144,6 @@ export default function ExamPlayerPage({
       if (res.ok) {
         router.push(`/exam/${sessionId}/results`);
       } else {
-        // Fallback navigation
         router.push(`/exam/${sessionId}/results`);
       }
     } catch {
@@ -205,7 +204,6 @@ export default function ExamPlayerPage({
     if (!activeQuestion || !activeSection) return;
 
     const qId = activeQuestion.id;
-    // Retain existing saved attempt if already completed, else mark as visited unanswered
     const currentAttempt = attempts[qId];
     if (!currentAttempt || currentAttempt.status !== "ATTEMPTED_SAVED") {
       setAttempts((prev) => ({
@@ -235,7 +233,6 @@ export default function ExamPlayerPage({
         selectedOptionId !== (saved?.optionId ?? null);
 
       if (hasUncommittedChange) {
-        // Trigger the Interstitial Guardrail Modal!
         setGuardrailTargetIndex(targetIndex);
         setIsGuardrailOpen(true);
       } else {
@@ -279,7 +276,7 @@ export default function ExamPlayerPage({
     setGuardrailTargetIndex(null);
   }, [guardrailTargetIndex]);
 
-  // Section global question offset for numbered badges (e.g. Section 2 starts at Q21)
+  // Section global question offset for numbered badges
   const sectionStartQuestionNumber = useMemo(() => {
     if (!manifest) return 1;
     let offset = 1;
@@ -305,9 +302,9 @@ export default function ExamPlayerPage({
         <div className="retro-window p-6 text-center max-w-xs w-full">
           <div className="retro-sunken bg-white p-4">
             <div className="retro-sunken-dark p-2 font-mono text-xs text-emerald-400 mb-3">
-              INITIALIZING ENGINE...
+              initializing engine...
             </div>
-            <span className="text-xs font-bold text-slate-700">Loading Examination Manifest</span>
+            <span className="text-xs font-bold text-slate-700">loading examination manifest...</span>
           </div>
         </div>
       </div>
@@ -325,8 +322,8 @@ export default function ExamPlayerPage({
       <header className="retro-titlebar sticky top-0 z-30 h-14 shadow-sm">
         {/* Left: Exam Title & Instructions trigger */}
         <div className="flex items-center gap-3">
-          <h1 className="text-xs sm:text-sm font-black tracking-tight text-white uppercase truncate max-w-xs sm:max-w-md">
-            {manifest.title}
+          <h1 className="text-xs sm:text-sm font-black tracking-tight text-white truncate max-w-xs sm:max-w-md">
+            {manifest.title.toLowerCase()}
           </h1>
           <button
             type="button"
@@ -334,7 +331,7 @@ export default function ExamPlayerPage({
             className="retro-btn hidden sm:inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-900"
           >
             <Info className="h-3 w-3 text-sky-700" />
-            Instructions
+            instructions
           </button>
         </div>
 
@@ -350,7 +347,7 @@ export default function ExamPlayerPage({
             onClick={() => setIsEndTestModalOpen(true)}
             className="retro-btn-orange px-3.5 py-1.5 text-xs sm:text-sm font-black"
           >
-            End Test
+            end test
           </button>
         </div>
       </header>
@@ -374,14 +371,14 @@ export default function ExamPlayerPage({
                     : "bg-slate-200 text-slate-700 hover:bg-slate-100"
                 }`}
               >
-                {section.title}
+                {section.title.toLowerCase()}
               </button>
             );
           })}
         </div>
       </nav>
 
-      {/* 3. Main Player Viewport: 2-Column Split in Landscape (>= 1024px) / Stacked in Portrait */}
+      {/* 3. Main Player Viewport */}
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col lg:flex-row gap-5 p-4 sm:p-6 pb-28 lg:pb-6">
         {/* LEFT COLUMN: Question Stem, Options, and Controls */}
         <div className="retro-window flex flex-1 flex-col justify-between overflow-hidden">
@@ -391,14 +388,14 @@ export default function ExamPlayerPage({
             <div className="retro-panel flex items-center justify-between p-2.5 mb-4">
               <div className="flex items-center gap-2">
                 <span className="retro-btn bg-slate-100 px-2.5 py-0.5 text-xs font-black text-slate-900">
-                  QUESTION {currentQuestionNumber}
+                  question {currentQuestionNumber}
                 </span>
                 <span className="text-xs font-bold text-slate-700">
-                  Section: {activeSection.title}
+                  section: {activeSection.title.toLowerCase()}
                 </span>
               </div>
               <span className="retro-sunken px-2 py-0.5 text-xs font-mono font-bold text-slate-700">
-                MARKS: +4.0 / 0.0
+                marks: +4.0 / 0.0
               </span>
             </div>
 
@@ -414,7 +411,7 @@ export default function ExamPlayerPage({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={activeQuestion.diagramUrl}
-                    alt={`Diagram for Question ${currentQuestionNumber}`}
+                    alt={`diagram for question ${currentQuestionNumber}`}
                     className="max-h-72 w-auto object-contain"
                   />
                 </div>
@@ -425,7 +422,7 @@ export default function ExamPlayerPage({
             <div className="space-y-2.5">
               {activeQuestion.options.map((option, optIdx) => {
                 const isSelected = selectedOptionId === option.id;
-                const letter = String.fromCharCode(65 + optIdx); // 'A', 'B', 'C', 'D'
+                const letter = String.fromCharCode(97 + optIdx); // 'a', 'b', 'c', 'd'
                 return (
                   <div
                     key={option.id}
@@ -455,7 +452,7 @@ export default function ExamPlayerPage({
             </div>
           </div>
 
-          {/* Action Control Bar (Embedded in card footer on Desktop) */}
+          {/* Action Control Bar */}
           <ActionControlBar
             hasSelection={selectedOptionId !== null}
             onDeselect={handleDeselect}
@@ -466,7 +463,7 @@ export default function ExamPlayerPage({
           />
         </div>
 
-        {/* RIGHT COLUMN: Question Palette Sidebar (32% width on desktop) */}
+        {/* RIGHT COLUMN: Question Palette Sidebar */}
         <aside className="w-full lg:w-80 shrink-0">
           <div className="retro-window p-4 sticky top-20">
             <QuestionPalette
@@ -481,19 +478,19 @@ export default function ExamPlayerPage({
             <div className="retro-sunken bg-white p-3 mt-4 space-y-2 text-xs text-slate-700">
               <div className="flex items-center gap-2">
                 <span className="h-4 w-4 retro-btn-green rounded text-[9px] flex items-center justify-center font-black">✓</span>
-                <span className="font-bold text-slate-800">Attempted &amp; Saved</span>
+                <span className="font-bold text-slate-800">attempted &amp; saved</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-4 w-4 retro-btn-orange rounded text-[9px] flex items-center justify-center font-black">!</span>
-                <span className="font-bold text-slate-800">Visited (Unanswered)</span>
+                <span className="font-bold text-slate-800">visited (unanswered)</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-4 w-4 retro-btn ring-2 ring-blue-600 rounded text-[9px] flex items-center justify-center font-black">●</span>
-                <span className="font-bold text-slate-800">Active Current</span>
+                <span className="font-bold text-slate-800">active current</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-4 w-4 retro-btn rounded text-[9px] flex items-center justify-center">○</span>
-                <span className="font-semibold text-slate-700">Unvisited</span>
+                <span className="font-semibold text-slate-700">unvisited</span>
               </div>
             </div>
           </div>
@@ -514,11 +511,11 @@ export default function ExamPlayerPage({
       {/* Manual End Test Confirmation Modal */}
       {isEndTestModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="retro-window w-full max-w-md overflow-hidden">
+          <div className="retro-window w-full max-w-sm overflow-hidden">
             <div className="retro-titlebar bg-gradient-to-r from-amber-700 to-amber-900">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <AlertTriangle className="h-4 w-4 text-amber-200" />
-                <span className="text-xs font-bold uppercase tracking-wider">Confirm Test Submission</span>
+                <span className="text-xs font-bold tracking-wide">submit test?</span>
               </div>
               <button
                 type="button"
@@ -528,17 +525,17 @@ export default function ExamPlayerPage({
                 ✕
               </button>
             </div>
-            <div className="p-5">
-              <div className="retro-sunken bg-white p-4 text-xs sm:text-sm text-slate-700 leading-relaxed mb-4">
-                Are you sure you want to end and submit your examination? Once submitted, you cannot revisit or modify any answers.
+            <div className="p-4">
+              <div className="retro-sunken bg-white p-3.5 text-xs text-slate-700 leading-relaxed mb-4">
+                ready to turn in your test? you won&apos;t be able to change any answers after submitting.
               </div>
-              <div className="flex justify-end gap-2.5">
+              <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsEndTestModalOpen(false)}
-                  className="retro-btn px-4 py-1.5 text-xs font-bold"
+                  className="retro-btn px-3.5 py-1 text-xs font-bold"
                 >
-                  Cancel &amp; Continue Test
+                  keep working
                 </button>
                 <button
                   type="button"
@@ -546,9 +543,9 @@ export default function ExamPlayerPage({
                     setIsEndTestModalOpen(false);
                     handleAutoSubmit();
                   }}
-                  className="retro-btn-orange px-4 py-1.5 text-xs font-black"
+                  className="retro-btn-orange px-4 py-1 text-xs font-black"
                 >
-                  Yes, Submit Test
+                  yes, submit
                 </button>
               </div>
             </div>
@@ -559,11 +556,11 @@ export default function ExamPlayerPage({
       {/* Instructions Popup Modal */}
       {isInstructionsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="retro-window w-full max-w-lg overflow-hidden max-h-[85vh] flex flex-col">
+          <div className="retro-window w-full max-w-md overflow-hidden max-h-[85vh] flex flex-col">
             <div className="retro-titlebar">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <Info className="h-4 w-4 text-sky-200" />
-                <span className="text-xs font-bold uppercase tracking-wider">Examination Instructions</span>
+                <span className="text-xs font-bold tracking-wide">test guidelines</span>
               </div>
               <button
                 type="button"
@@ -573,20 +570,20 @@ export default function ExamPlayerPage({
                 ✕
               </button>
             </div>
-            <div className="p-5 overflow-y-auto">
-              <div className="retro-sunken bg-white p-4 space-y-2.5 text-xs sm:text-sm text-slate-700 leading-relaxed mb-4">
-                <p>• Marking: <strong>+4.0 marks</strong> per correct question. No negative penalty.</p>
-                <p>• Navigation: Use the section tabs at the top to switch between subjects.</p>
-                <p>• Saving: Click <strong>[Save &amp; Next]</strong> to commit your selection.</p>
-                <p>• Lockout: Leaving fullscreen or switching tabs triggers violation strikes.</p>
+            <div className="p-4 overflow-y-auto">
+              <div className="retro-sunken bg-white p-3.5 space-y-2 text-xs text-slate-700 leading-relaxed mb-3">
+                <p>• <strong>sections:</strong> click subject tabs at the top to navigate between sections.</p>
+                <p>• <strong>palette:</strong> click question numbers on the right to jump directly to any question.</p>
+                <p>• <strong>save answers:</strong> click <strong>[save &amp; next]</strong> to record each answer.</p>
+                <p>• <strong>lockdown:</strong> exiting fullscreen or alt-tabbing triggers an integrity strike (3 strikes = disqualified).</p>
               </div>
               <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={() => setIsInstructionsOpen(false)}
-                  className="retro-btn px-4 py-1.5 text-xs font-bold"
+                  className="retro-btn px-4 py-1 text-xs font-bold"
                 >
-                  Close
+                  got it
                 </button>
               </div>
             </div>
@@ -598,40 +595,40 @@ export default function ExamPlayerPage({
       {blockedKeyToast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 retro-window p-2 bg-slate-900 text-amber-300 flex items-center gap-2 text-xs font-bold">
           <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
-          <span>{blockedKeyToast}</span>
+          <span>{blockedKeyToast.toLowerCase()}</span>
         </div>
       )}
 
       {/* 2. Fullscreen Integrity Lockout Overlay */}
       {isFullscreenLocked && !isDisqualified && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 text-slate-900 select-none">
-          <div className="retro-window max-w-md w-full overflow-hidden">
+          <div className="retro-window max-w-sm w-full overflow-hidden">
             <div className="retro-titlebar bg-gradient-to-r from-red-800 to-red-950">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <ShieldAlert className="h-4 w-4 text-red-300" />
-                <span className="text-xs font-bold uppercase tracking-wider">
-                  Fullscreen Lockdown Enforced
+                <span className="text-xs font-bold tracking-wide">
+                  fullscreen required
                 </span>
               </div>
             </div>
-            <div className="p-6 text-center">
-              <div className="retro-sunken bg-white p-5 text-left mb-4">
-                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                  OpenHall examination mode requires active Fullscreen. All question inputs are frozen until you restore fullscreen.
+            <div className="p-5 text-center">
+              <div className="retro-sunken bg-white p-4 text-left mb-4">
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  this test requires fullscreen mode. all questions are frozen until you restore fullscreen.
                 </p>
                 {strikes > 0 && (
-                  <div className="mt-3 retro-panel bg-red-50 p-2 text-xs font-bold text-red-800 border-red-300">
-                    Recorded Violations: {strikes} of {maxStrikes} Strikes
+                  <div className="mt-2.5 retro-panel bg-red-50 p-2 text-xs font-bold text-red-800 border-red-300">
+                    strikes recorded: {strikes} of {maxStrikes}
                   </div>
                 )}
               </div>
               <button
                 type="button"
                 onClick={reEnterFullscreen}
-                className="retro-btn-green w-full py-2.5 text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer"
+                className="retro-btn-green w-full py-2 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Maximize2 className="h-4 w-4" />
-                Enter Fullscreen &amp; Unlock Exam
+                <Maximize2 className="h-3.5 w-3.5" />
+                resume fullscreen
               </button>
             </div>
           </div>
@@ -641,32 +638,32 @@ export default function ExamPlayerPage({
       {/* 3. Strike Violation Warning Dialog */}
       {activeViolationModal && !isDisqualified && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 select-none">
-          <div className="retro-window max-w-md w-full overflow-hidden">
+          <div className="retro-window max-w-sm w-full overflow-hidden">
             <div className="retro-titlebar bg-gradient-to-r from-amber-700 to-red-800">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <AlertTriangle className="h-4 w-4 text-yellow-300" />
-                <span className="text-xs font-bold uppercase tracking-wider">
-                  Integrity Alert: Focus Lost
+                <span className="text-xs font-bold tracking-wide">
+                  focus lost (strike {activeViolationModal.strike} of {maxStrikes})
                 </span>
               </div>
             </div>
-            <div className="p-5">
-              <div className="retro-sunken bg-white p-4 text-xs sm:text-sm text-slate-700 leading-relaxed mb-3">
-                {activeViolationModal.message}
+            <div className="p-4">
+              <div className="retro-sunken bg-white p-3 text-xs text-slate-700 leading-relaxed mb-3">
+                {activeViolationModal.message.toLowerCase()}
               </div>
-              <div className="retro-panel bg-red-100 p-2.5 flex items-center justify-between text-xs font-bold text-red-900 border-red-300 mb-3">
-                <span>Violation Strike Recorded:</span>
-                <span className="font-mono text-sm">{activeViolationModal.strike} of {maxStrikes}</span>
+              <div className="retro-panel bg-red-100 p-2 flex items-center justify-between text-xs font-bold text-red-900 border-red-300 mb-3">
+                <span>violations:</span>
+                <span className="font-mono text-sm">{activeViolationModal.strike} of {maxStrikes} strikes</span>
               </div>
-              <p className="text-[11px] text-slate-600 mb-4">
-                Accumulating 3 strikes will permanently terminate and disqualify your exam.
+              <p className="text-[11px] text-slate-600 mb-3">
+                accumulating 3 strikes will immediately submit and disqualify your test.
               </p>
               <button
                 type="button"
                 onClick={dismissViolationModal}
-                className="retro-btn w-full py-2 text-xs font-bold hover:bg-slate-100"
+                className="retro-btn w-full py-1.5 text-xs font-bold hover:bg-slate-100"
               >
-                I Acknowledge — Return to Exam
+                return to test
               </button>
             </div>
           </div>
@@ -676,24 +673,24 @@ export default function ExamPlayerPage({
       {/* 4. Permanent Disqualification Lockout Screen */}
       {isDisqualified && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-4 select-none">
-          <div className="retro-window max-w-md w-full overflow-hidden">
+          <div className="retro-window max-w-sm w-full overflow-hidden">
             <div className="retro-titlebar bg-gradient-to-r from-red-900 to-black">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <XCircle className="h-4 w-4 text-red-400" />
-                <span className="text-xs font-bold uppercase tracking-wider">
-                  Examination Disqualified
+                <span className="text-xs font-bold tracking-wider">
+                  test disqualified
                 </span>
               </div>
             </div>
-            <div className="p-6 text-center">
-              <div className="retro-sunken bg-red-50 p-4 text-xs sm:text-sm text-red-900 leading-relaxed mb-4 text-left">
-                Your examination has been terminated due to exceeding the maximum allowed integrity violations (3 Strikes). All test interactions are locked and logged.
+            <div className="p-5 text-center">
+              <div className="retro-sunken bg-red-50 p-3.5 text-xs text-red-900 leading-relaxed mb-4 text-left">
+                your test session was terminated after reaching 3 integrity strikes (tab switching or focus loss). your answers have been submitted.
               </div>
               <Link
                 href={`/exam/${sessionId}/results`}
-                className="retro-btn-orange w-full py-2.5 text-xs inline-block text-center font-bold"
+                className="retro-btn-orange w-full py-2 text-xs inline-block text-center font-bold"
               >
-                View Incident Scorecard &rarr;
+                view scorecard &rarr;
               </Link>
             </div>
           </div>
