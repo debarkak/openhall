@@ -8,8 +8,8 @@ import {
   Plus,
   Trash2,
   CheckCircle2,
+  AlertTriangle,
   Save,
-  HelpCircle,
   Eye,
   Shield,
   Layers,
@@ -66,23 +66,31 @@ export default function QuestionComposerPage({
   const [diagramUrl, setDiagramUrl] = useState("");
   const [solutionExplanation, setSolutionExplanation] = useState("");
   const [options, setOptions] = useState<OptionItem[]>([
-    { orderIndex: 0, text: "Option A", isCorrect: true },
-    { orderIndex: 1, text: "Option B", isCorrect: false },
-    { orderIndex: 2, text: "Option C", isCorrect: false },
-    { orderIndex: 3, text: "Option D", isCorrect: false },
+    { orderIndex: 0, text: "", isCorrect: true },
+    { orderIndex: 1, text: "", isCorrect: false },
+    { orderIndex: 2, text: "", isCorrect: false },
+    { orderIndex: 3, text: "", isCorrect: false },
   ]);
   const [isSaving, setIsSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
-  const loadExamDetail = async () => {
+  const loadExamDetail = async (preserveSectionId?: string) => {
     try {
       const res = await fetch(`/api/admin/exams/${examId}`);
       if (res.ok) {
         const data: ExamDetail = await res.json();
         setExam(data);
-        if (data.sections.length > 0 && !selectedSectionId) {
-          setSelectedSectionId(data.sections[0].id);
-          if (data.sections[0].questions.length > 0) {
-            loadQuestionIntoForm(data.sections[0].questions[0]);
+
+        const targetSecId = preserveSectionId || selectedSectionId || (data.sections.length > 0 ? data.sections[0].id : "");
+        setSelectedSectionId(targetSecId);
+
+        if (!selectedQuestion && data.sections.length > 0) {
+          const currentSec = data.sections.find((s) => s.id === targetSecId) || data.sections[0];
+          if (currentSec && currentSec.questions.length > 0) {
+            loadQuestionIntoForm(currentSec.questions[0]);
           }
         }
       }
@@ -102,6 +110,7 @@ export default function QuestionComposerPage({
     setStem(q.stem);
     setDiagramUrl(q.diagramUrl || "");
     setSolutionExplanation(q.solutionExplanation || "");
+    setFeedback(null);
     setOptions(
       q.options.map((o) => ({
         id: o.id,
@@ -117,6 +126,7 @@ export default function QuestionComposerPage({
     setStem("");
     setDiagramUrl("");
     setSolutionExplanation("");
+    setFeedback(null);
     setOptions([
       { orderIndex: 0, text: "", isCorrect: true },
       { orderIndex: 1, text: "", isCorrect: false },
@@ -125,36 +135,98 @@ export default function QuestionComposerPage({
     ]);
   };
 
-  // Math Macro Insertion Helper
   const insertMacro = (macro: string) => {
     setStem((prev) => prev + macro);
   };
 
   const handleSaveQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSectionId || !stem) return;
+    setFeedback(null);
+
+    if (!selectedSectionId) {
+      setFeedback({ type: "error", message: "Please select a section on the left first." });
+      return;
+    }
+
+    if (!stem.trim()) {
+      setFeedback({ type: "error", message: "Question stem cannot be empty. Please type a question." });
+      return;
+    }
+
+    const filledOptions = options.filter((o) => o.text && o.text.trim());
+    if (filledOptions.length < 2) {
+      setFeedback({
+        type: "error",
+        message: "Please enter text for at least 2 multiple-choice options.",
+      });
+      return;
+    }
+
+    // Default first choice as correct if none selected
+    if (!filledOptions.some((o) => o.isCorrect)) {
+      filledOptions[0].isCorrect = true;
+    }
+
     setIsSaving(true);
 
     try {
-      const res = await fetch(`/api/admin/sections/${selectedSectionId}/questions`, {
-        method: "POST",
+      const endpoint = selectedQuestion
+        ? `/api/admin/questions/${selectedQuestion.id}`
+        : `/api/admin/sections/${selectedSectionId}/questions`;
+
+      const method = selectedQuestion ? "PUT" : "POST";
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          stem,
-          diagramUrl: diagramUrl || null,
-          solutionExplanation: solutionExplanation || null,
-          options,
+          stem: stem.trim(),
+          diagramUrl: diagramUrl.trim() || null,
+          solutionExplanation: solutionExplanation.trim() || null,
+          options: filledOptions,
         }),
       });
 
       if (res.ok) {
-        await loadExamDetail();
-        alert("Question saved successfully!");
+        const savedData: QuestionItem = await res.json();
+        setFeedback({
+          type: "success",
+          message: selectedQuestion
+            ? "Question updated successfully!"
+            : "New question composed and added to section!",
+        });
+        await loadExamDetail(selectedSectionId);
+        if (savedData && savedData.id) {
+          loadQuestionIntoForm(savedData);
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setFeedback({
+          type: "error",
+          message: errData.error || "Failed to save question. Please try again.",
+        });
       }
     } catch (err) {
       console.error("Failed to save question:", err);
+      setFeedback({ type: "error", message: "Network error while saving question." });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteQuestion = async (qId: string) => {
+    if (!confirm("Are you sure you want to delete this question?")) return;
+    try {
+      const res = await fetch(`/api/admin/questions/${qId}`, { method: "DELETE" });
+      if (res.ok) {
+        setFeedback({ type: "success", message: "Question deleted successfully." });
+        handleNewQuestion();
+        await loadExamDetail(selectedSectionId);
+      } else {
+        setFeedback({ type: "error", message: "Failed to delete question." });
+      }
+    } catch {
+      setFeedback({ type: "error", message: "Network error while deleting question." });
     }
   };
 
@@ -168,7 +240,7 @@ export default function QuestionComposerPage({
     );
   }
 
-  const activeSection = exam.sections.find((s) => s.id === selectedSectionId);
+  const activeSection = exam.sections.find((s) => s.id === selectedSectionId) || exam.sections[0];
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -177,7 +249,7 @@ export default function QuestionComposerPage({
         <div className="flex items-center gap-3">
           <Link
             href="/studio"
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to Studio
@@ -222,14 +294,16 @@ export default function QuestionComposerPage({
                     handleNewQuestion();
                   }
                 }}
-                className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                className={`flex items-center justify-between rounded-lg p-2.5 text-xs font-semibold transition ${
                   selectedSectionId === sec.id
-                    ? "bg-brand-cyan-tab text-slate-900 border border-brand-cyan-border shadow-xs"
-                    : "text-slate-600 hover:bg-slate-50"
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "text-slate-700 hover:bg-slate-100"
                 }`}
               >
                 <span>{sec.title}</span>
-                <span className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-bold">
+                <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                  selectedSectionId === sec.id ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-600"
+                }`}>
                   {sec.questions.length}
                 </span>
               </button>
@@ -245,7 +319,7 @@ export default function QuestionComposerPage({
               <button
                 type="button"
                 onClick={handleNewQuestion}
-                className="flex items-center gap-1 text-[11px] font-bold text-brand-green hover:underline"
+                className="flex items-center gap-1 rounded bg-brand-green/10 px-2 py-1 text-[11px] font-bold text-brand-green hover:bg-brand-green/20 transition"
               >
                 <Plus className="h-3 w-3" /> New
               </button>
@@ -273,25 +347,68 @@ export default function QuestionComposerPage({
         {/* Center/Right: Visual Question Composer & Real-Time KaTeX Preview */}
         <main className="flex-1 p-6 overflow-y-auto bg-slate-50">
           <form onSubmit={handleSaveQuestion} className="max-w-4xl mx-auto space-y-6">
-            {/* Header info */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">
-                {selectedQuestion ? `Editing Question` : `Compose New Question`}
-              </h2>
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="flex items-center gap-2 rounded-xl bg-brand-green px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-brand-green-hover active:scale-95 transition"
-              >
-                <Save className="h-4 w-4" />
-                {isSaving ? "Saving..." : "Save Question"}
-              </button>
+            {/* Header info & Action Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  {selectedQuestion ? `Editing Question` : `Compose New Question`}
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Section: <strong className="text-slate-700">{activeSection?.title}</strong>
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {selectedQuestion && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteQuestion(selectedQuestion.id)}
+                    className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold text-red-600 hover:bg-red-100 transition"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleNewQuestion}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                >
+                  Clear / New
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex items-center gap-2 rounded-xl bg-brand-green px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-brand-green-hover active:scale-95 transition disabled:opacity-50 cursor-pointer"
+                >
+                  <Save className="h-4 w-4" />
+                  {isSaving ? "Saving..." : "Save Question"}
+                </button>
+              </div>
             </div>
+
+            {/* Notification / Toast Banner */}
+            {feedback && (
+              <div
+                className={`flex items-center gap-2.5 rounded-xl p-3.5 text-sm font-semibold transition shadow-xs ${
+                  feedback.type === "success"
+                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    : "bg-red-50 text-red-800 border border-red-200"
+                }`}
+              >
+                {feedback.type === "success" ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+                )}
+                <span>{feedback.message}</span>
+              </div>
+            )}
 
             {/* Math Macro Toolbar */}
             <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
               <span className="block text-[11px] font-bold uppercase text-slate-400 mb-2">
-                KaTeX Formula Bar (Click to insert)
+                KaTeX Formula Bar (Click symbol to insert into stem)
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {[
@@ -315,7 +432,7 @@ export default function QuestionComposerPage({
                     key={i}
                     type="button"
                     onClick={() => insertMacro(item.macro)}
-                    className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-mono font-medium text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition"
+                    className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-mono font-medium text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition cursor-pointer"
                   >
                     {item.label}
                   </button>
@@ -330,7 +447,6 @@ export default function QuestionComposerPage({
               </label>
               <textarea
                 rows={4}
-                required
                 value={stem}
                 onChange={(e) => setStem(e.target.value)}
                 placeholder="Type question stem here. E.g. Simplify $\frac{p + \sqrt{p^2-q^2}}{p - \sqrt{p^2-q^2}}$..."
@@ -339,7 +455,7 @@ export default function QuestionComposerPage({
 
               {/* Real-Time Live KaTeX Preview */}
               <div className="mt-4 pt-4 border-t border-slate-100">
-                <span className="block text-[11px] font-bold uppercase text-slate-400 mb-1 flex items-center gap-1">
+                <span className="text-[11px] font-bold uppercase text-slate-400 mb-1 flex items-center gap-1">
                   <Eye className="h-3 w-3" /> Real-Time Live Preview
                 </span>
                 <div className="rounded-lg bg-slate-50 p-4 min-h-[50px] border border-slate-200/60">
@@ -354,10 +470,10 @@ export default function QuestionComposerPage({
                 Diagram / Vector Graphic URL (Optional)
               </label>
               <input
-                type="url"
+                type="text"
                 value={diagramUrl}
                 onChange={(e) => setDiagramUrl(e.target.value)}
-                placeholder="https://example.com/diagram.png (PNG, SVG, WebP)"
+                placeholder="https://example.com/diagram.png or image path"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-green focus:outline-none"
               />
               {diagramUrl && (
@@ -372,7 +488,7 @@ export default function QuestionComposerPage({
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
               <div className="flex items-center justify-between mb-4">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600">
-                  Multiple Choice Options (Select radio to designate Authoritative Answer Key)
+                  Multiple Choice Options (Select radio to set authoritative answer key)
                 </label>
                 {options.length < 6 && (
                   <button
@@ -383,7 +499,7 @@ export default function QuestionComposerPage({
                         { orderIndex: prev.length, text: "", isCorrect: false },
                       ])
                     }
-                    className="text-xs font-bold text-brand-green hover:underline flex items-center gap-1"
+                    className="text-xs font-bold text-brand-green hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="h-3 w-3" /> Add Choice
                   </button>
@@ -394,7 +510,11 @@ export default function QuestionComposerPage({
                 {options.map((opt, optIdx) => (
                   <div
                     key={optIdx}
-                    className="flex items-center gap-3 p-2.5 rounded-lg border border-slate-200 bg-slate-50/50"
+                    className={`flex items-center gap-3 p-2.5 rounded-lg border transition ${
+                      opt.isCorrect
+                        ? "border-brand-green bg-emerald-50/40"
+                        : "border-slate-200 bg-slate-50/50"
+                    }`}
                   >
                     {/* Radio Button for Key Selection */}
                     <input
@@ -413,7 +533,6 @@ export default function QuestionComposerPage({
                     {/* Option Text Input */}
                     <input
                       type="text"
-                      required
                       value={opt.text}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -426,7 +545,7 @@ export default function QuestionComposerPage({
                     />
 
                     {/* Mini KaTeX Preview */}
-                    {opt.text.includes("$") && (
+                    {opt.text && opt.text.includes("$") && (
                       <div className="px-2 py-1 bg-white rounded border border-slate-200 text-xs">
                         <KaTeXRenderer content={opt.text} />
                       </div>
@@ -439,7 +558,8 @@ export default function QuestionComposerPage({
                         onClick={() =>
                           setOptions((prev) => prev.filter((_, i) => i !== optIdx))
                         }
-                        className="text-slate-400 hover:text-red-500 p-1"
+                        className="text-slate-400 hover:text-red-500 p-1 cursor-pointer"
+                        title="Remove choice"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -449,16 +569,16 @@ export default function QuestionComposerPage({
               </div>
             </div>
 
-            {/* Solution Explanation Editor */}
+            {/* Explanation / Solution Note */}
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
-                Solution Explanation (Shown to students during post-exam review)
+                Solution Explanation (Disclosed on Student Scorecard post-submission)
               </label>
               <textarea
                 rows={3}
                 value={solutionExplanation}
                 onChange={(e) => setSolutionExplanation(e.target.value)}
-                placeholder="Explain the derivation or reasoning for candidate remediation..."
+                placeholder="Step-by-step mathematical reasoning or physics derivation..."
                 className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:border-brand-green focus:outline-none"
               />
             </div>
