@@ -1,39 +1,44 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ShieldAlert, Maximize2, Clock, ArrowLeft, FileText } from "lucide-react";
 import { CandidateExamManifest } from "@/lib/types";
 
-export default function ExamInstructionsPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function ExamInstructionsPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const sessionId = params.id;
   const [manifest, setManifest] = useState<CandidateExamManifest | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [isLaunching, setIsLaunching] = useState(false);
 
   useEffect(() => {
     async function fetchManifest() {
       try {
-        const res = await fetch(`/api/sessions/${sessionId}/manifest`);
+        const res = await fetch(`/api/sessions/${sessionId}/manifest?preview=1`);
         if (res.ok) {
           const data: CandidateExamManifest = await res.json();
           setManifest(data);
+        } else if (res.status === 401) {
+          router.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+        } else if (res.status === 403) {
+          router.replace("/lobby");
+        } else {
+          setLoadError("could not load this exam session. return to the lobby and try again.");
         }
       } catch (err) {
         console.error("failed to load manifest:", err);
+        setLoadError("could not connect to the exam server. check your connection and try again.");
       } finally {
         setLoading(false);
       }
     }
     fetchManifest();
-  }, [sessionId]);
+  }, [sessionId, router]);
 
   const handleStartExam = async () => {
     if (!agreed) return;
@@ -95,6 +100,13 @@ export default function ExamInstructionsPage({
                 </span>
               </div>
 
+              {loadError ? (
+                <div className="retro-panel mb-3 bg-red-50 border-red-300 p-3 text-xs text-red-900">
+                  {loadError}
+                  <Link href="/lobby" className="ml-2 font-bold underline">return to lobby</Link>
+                </div>
+              ) : null}
+
               {manifest && manifest.sections.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-3">
                   {manifest.sections.map((sec, idx) => (
@@ -107,9 +119,11 @@ export default function ExamInstructionsPage({
                 </div>
               )}
 
-              <p className="text-xs text-slate-600 leading-relaxed">
-                marking: <strong>+4.0 marks</strong> per correct answer. no negative penalties for wrong answers.
-              </p>
+              {manifest && (
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  default marking: <strong>+{manifest.positiveMarks}</strong> for a correct answer and <strong>-{manifest.negativePenalty}</strong> for an incorrect answer. individual questions may use different values.
+                </p>
+              )}
             </div>
           </div>
 
@@ -172,9 +186,9 @@ export default function ExamInstructionsPage({
             <button
               type="button"
               onClick={handleStartExam}
-              disabled={!agreed || isLaunching}
+              disabled={!manifest || !agreed || isLaunching}
               className={`retro-btn-green px-6 py-2 text-xs sm:text-sm font-bold inline-flex items-center gap-1.5 ${
-                !agreed || isLaunching ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                !manifest || !agreed || isLaunching ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
               }`}
             >
               <Maximize2 className="h-4 w-4" />

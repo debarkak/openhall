@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { KaTeXRenderer } from "@/components/katex/KaTeXRenderer";
 import { CircularProgressGauge } from "@/components/exam/CircularProgressGauge";
 import { QuestionPalette } from "@/components/exam/QuestionPalette";
@@ -14,18 +14,17 @@ import { CandidateExamManifest, ItemStatus } from "@/lib/types";
 import { Info, AlertTriangle, ShieldAlert, Maximize2, XCircle } from "lucide-react";
 import Link from "next/link";
 
-export default function ExamPlayerPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function ExamPlayerPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const sessionId = params.id;
 
   // Manifest and session state
   const [manifest, setManifest] = useState<CandidateExamManifest | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   // Active section & question navigation
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
@@ -74,7 +73,23 @@ export default function ExamPlayerPage({
       try {
         const res = await fetch(`/api/sessions/${sessionId}/manifest`);
         if (!res.ok) {
-          throw new Error("failed to load exam session");
+          if (res.status === 401) {
+            router.replace(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+            return;
+          }
+
+          const error = await res.json().catch(() => ({}));
+          if (res.status === 403 && error.error === "This exam session is no longer active.") {
+            router.replace(`/exam/${sessionId}/results`);
+            return;
+          }
+
+          if (res.status === 403) {
+            router.replace("/lobby");
+            return;
+          }
+
+          throw new Error(error.error || "could not load this exam session");
         }
         const data: CandidateExamManifest = await res.json();
         setManifest(data);
@@ -90,13 +105,15 @@ export default function ExamPlayerPage({
         const diffSec = Math.max(0, Math.floor((deadlineMs - nowMs) / 1000));
         setRemainingSeconds(diffSec);
 
-        setLoading(false);
       } catch (err) {
         console.error("exam load failed:", err);
+        setLoadError(err instanceof Error ? err.message : "could not load this exam session");
+      } finally {
+        setLoading(false);
       }
     }
     loadExam();
-  }, [sessionId]);
+  }, [sessionId, router]);
 
   // Active Section & Question helpers
   const activeSection = manifest?.sections[currentSectionIndex] || null;
@@ -110,29 +127,10 @@ export default function ExamPlayerPage({
     }
   }, [activeQuestion, attempts]);
 
-  // 2. High-precision authoritative countdown loop
-  useEffect(() => {
-    if (!manifest || isSubmitting) return;
-
-    const deadlineMs = new Date(manifest.deadline).getTime();
-
-    const interval = setInterval(() => {
-      const nowMs = Date.now();
-      const diff = Math.max(0, Math.floor((deadlineMs - nowMs) / 1000));
-      setRemainingSeconds(diff);
-
-      if (diff <= 0) {
-        clearInterval(interval);
-        handleAutoSubmit();
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [manifest, isSubmitting]);
-
-  // 3. Final Submission Handler
+  // 2. Final Submission Handler
   const handleAutoSubmit = useCallback(async () => {
     if (isSubmitting) return;
+    setSubmissionError(null);
     setIsSubmitting(true);
 
     try {
@@ -143,13 +141,38 @@ export default function ExamPlayerPage({
 
       if (res.ok) {
         router.push(`/exam/${sessionId}/results`);
-      } else {
+      } else if (res.status === 409) {
         router.push(`/exam/${sessionId}/results`);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setSubmissionError(data.error || "the exam could not be submitted. check your connection and retry.");
+        setIsSubmitting(false);
       }
     } catch {
-      router.push(`/exam/${sessionId}/results`);
+      setSubmissionError("the exam could not be submitted. check your connection and retry.");
+      setIsSubmitting(false);
     }
   }, [sessionId, isSubmitting, router]);
+
+  // 3. High-precision authoritative countdown loop
+  useEffect(() => {
+    if (!manifest || isSubmitting || submissionError) return;
+
+    const deadlineMs = new Date(manifest.deadline).getTime();
+
+    const interval = setInterval(() => {
+      const nowMs = Date.now();
+      const diff = Math.max(0, Math.floor((deadlineMs - nowMs) / 1000));
+      setRemainingSeconds(diff);
+
+      if (diff <= 0) {
+        clearInterval(interval);
+        void handleAutoSubmit();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [manifest, isSubmitting, submissionError, handleAutoSubmit]);
 
   // 4. Save and Next Handler
   const handleSaveAndNext = useCallback(async () => {
@@ -247,11 +270,12 @@ export default function ExamPlayerPage({
     if (!activeQuestion || guardrailTargetIndex === null) return;
 
     const qId = activeQuestion.id;
+    const newStatus: ItemStatus = selectedOptionId ? "ATTEMPTED_SAVED" : "VISITED_UNANSWERED";
     setAttempts((prev) => ({
       ...prev,
-      [qId]: { optionId: selectedOptionId, status: "ATTEMPTED_SAVED" },
+      [qId]: { optionId: selectedOptionId, status: newStatus },
     }));
-    await persistAttemptLocally(sessionId, qId, selectedOptionId, "ATTEMPTED_SAVED");
+    await persistAttemptLocally(sessionId, qId, selectedOptionId, newStatus);
 
     fetch(`/api/sessions/${sessionId}/attempt`, {
       method: "POST",
@@ -259,7 +283,7 @@ export default function ExamPlayerPage({
       body: JSON.stringify({
         questionId: qId,
         optionId: selectedOptionId,
-        status: "ATTEMPTED_SAVED",
+        status: newStatus,
       }),
     }).catch(() => {});
 
@@ -296,7 +320,7 @@ export default function ExamPlayerPage({
     return res;
   }, [activeSection, attempts]);
 
-  if (loading || !manifest || !activeSection || !activeQuestion) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="retro-window p-6 text-center max-w-xs w-full">
@@ -305,6 +329,24 @@ export default function ExamPlayerPage({
               initializing engine...
             </div>
             <span className="text-xs font-bold text-slate-700">loading examination manifest...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!manifest || !activeSection || !activeQuestion) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="retro-window max-w-md w-full p-5 text-center">
+          <div className="retro-sunken bg-white p-4">
+            <h1 className="text-sm font-black text-red-900">exam unavailable</h1>
+            <p className="mt-2 text-xs text-slate-700">
+              {loadError || "this exam does not contain any questions."}
+            </p>
+            <Link href="/lobby" className="retro-btn mt-4 inline-flex px-4 py-2 text-xs font-bold">
+              return to lobby
+            </Link>
           </div>
         </div>
       </div>
@@ -380,6 +422,19 @@ export default function ExamPlayerPage({
 
       {/* 3. Main Player Viewport */}
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col lg:flex-row gap-5 p-4 sm:p-6 pb-28 lg:pb-6">
+        {submissionError && (
+          <div className="fixed bottom-4 left-1/2 z-40 flex w-[min(95vw,36rem)] -translate-x-1/2 items-center justify-between gap-3 retro-window border-red-400 bg-red-50 p-3 text-xs text-red-950 shadow-lg">
+            <span>{submissionError}</span>
+            <button
+              type="button"
+              onClick={handleAutoSubmit}
+              className="retro-btn-orange shrink-0 px-3 py-1.5 font-bold"
+            >
+              retry submission
+            </button>
+          </div>
+        )}
+
         {/* LEFT COLUMN: Question Stem, Options, and Controls */}
         <div className="retro-window flex flex-1 flex-col justify-between overflow-hidden">
           {/* Question Viewport */}

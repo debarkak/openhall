@@ -7,13 +7,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const candidateAccess = await authorizeCandidateSession(params.id);
+    const candidateAccess = await authorizeCandidateSession((await params).id);
     if (!candidateAccess.ok) return candidateAccess.response;
 
-    const sessionId = params.id;
+    const sessionId = (await params).id;
 
     const session = await prisma.examSession.findUnique({
       where: { id: sessionId },
@@ -50,22 +50,50 @@ export async function GET(
       return NextResponse.json({ error: "Exam session not found" }, { status: 404 });
     }
 
-    // Set startedAt and deadline if not started
+    if (session.status === "SUBMITTED" || session.status === "EVALUATED" || session.status === "DISQUALIFIED") {
+      return NextResponse.json({ error: "This exam session is no longer active." }, { status: 403 });
+    }
+
+    // The instructions page only needs exam details. Starting the timer there
+    // would consume exam time before the candidate enters the player.
     let startedAt = session.startedAt;
     let deadline = session.deadline;
 
-    if (!startedAt) {
+    const isPreview = request.nextUrl.searchParams.get("preview") === "1";
+    if (session.status === "NOT_STARTED" && isPreview) {
+      startedAt = new Date();
+      deadline = new Date(startedAt.getTime() + session.exam.durationSeconds * 1000);
+    } else if (session.status === "NOT_STARTED") {
       startedAt = new Date();
       deadline = new Date(startedAt.getTime() + session.exam.durationSeconds * 1000);
 
-      await prisma.examSession.update({
-        where: { id: sessionId },
+      const started = await prisma.examSession.updateMany({
+        where: { id: sessionId, status: "NOT_STARTED" },
         data: {
           status: "IN_PROGRESS",
           startedAt,
           deadline,
         },
       });
+
+      if (started.count === 0) {
+        // Another player tab may have started this session in parallel.
+        const currentSession = await prisma.examSession.findUnique({
+          where: { id: sessionId },
+          select: { status: true, startedAt: true, deadline: true },
+        });
+
+        if (currentSession?.status !== "IN_PROGRESS") {
+          return NextResponse.json({ error: "Exam session could not be started." }, { status: 409 });
+        }
+
+        startedAt = currentSession.startedAt;
+        deadline = currentSession.deadline;
+      }
+    }
+
+    if (!startedAt || !deadline) {
+      return NextResponse.json({ error: "Exam session timing data is incomplete." }, { status: 409 });
     }
 
     const initialAttempts: Record<string, { optionId: string | null; status: ItemStatus }> = {};
@@ -82,6 +110,8 @@ export async function GET(
       title: session.exam.title,
       instructions: session.exam.instructions,
       durationSeconds: session.exam.durationSeconds,
+      positiveMarks: session.exam.positiveMarks,
+      negativePenalty: session.exam.negativePenalty,
       startedAt: startedAt.toISOString(),
       deadline: (deadline || new Date()).toISOString(),
       sections: session.exam.sections.map((s) => ({

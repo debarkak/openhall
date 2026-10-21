@@ -33,6 +33,8 @@ export interface CandidateExamManifest {
   title: string;
   instructions?: string | null;
   durationSeconds: number;
+  positiveMarks: number;
+  negativePenalty: number;
   startedAt: string;
   deadline: string; // Absolute ISO timestamp from server
   sections: CandidateSection[];

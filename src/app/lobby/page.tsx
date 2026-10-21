@@ -48,10 +48,12 @@ export default async function CandidateLobbyPage() {
 
   // Find primary active/uncompleted exam for top greeting CTA
   const inProgressExam = exams.find((e) => e.sessions[0]?.status === "IN_PROGRESS");
-  const firstActiveExam = exams.find((e) => e.isLive && (!e.sessions[0] || e.sessions[0].status === "IN_PROGRESS"));
+  const firstActiveExam = exams.find((e) =>
+    e.sessions[0]?.status === "NOT_STARTED" || (e.isLive && !e.sessions[0])
+  );
   const heroExam = inProgressExam || firstActiveExam || exams[0];
   const heroSession = heroExam?.sessions[0];
-  const isHeroCompleted = heroSession?.status === "SUBMITTED" || heroSession?.status === "EVALUATED";
+  const isHeroCompleted = heroSession?.status === "SUBMITTED" || heroSession?.status === "EVALUATED" || heroSession?.status === "DISQUALIFIED";
 
   return (
     <div className="min-h-screen pb-12">
@@ -77,12 +79,6 @@ export default async function CandidateLobbyPage() {
           <div className="retro-btn flex h-7 w-7 items-center justify-center text-xs font-black text-slate-800">
             {candidate.name.split(" ").map((n) => n[0].toLowerCase()).join("")}
           </div>
-          <Link
-            href="/studio"
-            className="retro-btn px-2.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-100"
-          >
-            studio &rarr;
-          </Link>
           <AuthStatusButton user={sessionUser} />
         </div>
       </header>
@@ -126,7 +122,15 @@ export default async function CandidateLobbyPage() {
                     <Play className="h-3.5 w-3.5 fill-white" />
                     resume ({heroExam.title.toLowerCase()})
                   </Link>
-                ) : (
+                ) : heroSession?.status === "NOT_STARTED" ? (
+                  <Link
+                    href={`/exam/${heroSession.id}/instructions`}
+                    className="retro-btn-green px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5"
+                  >
+                    <Play className="h-3.5 w-3.5 fill-white" />
+                    continue ({heroExam.title.toLowerCase()})
+                  </Link>
+                ) : heroExam.isLive ? (
                   <TakeExamButton
                     examId={heroExam.id}
                     className="retro-btn-green px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
@@ -134,7 +138,7 @@ export default async function CandidateLobbyPage() {
                     <Play className="h-3.5 w-3.5 fill-white" />
                     start {heroExam.title.toLowerCase()}
                   </TakeExamButton>
-                )}
+                ) : null}
 
                 <Link
                   href="/studio"
@@ -163,6 +167,8 @@ export default async function CandidateLobbyPage() {
               const session = exam.sessions[0];
               const isCompleted = session?.status === "SUBMITTED" || session?.status === "EVALUATED";
               const isInProgress = session?.status === "IN_PROGRESS";
+              const isNotStarted = session?.status === "NOT_STARTED";
+              const isFinalized = isCompleted || session?.status === "DISQUALIFIED";
               const totalQuestions = exam.sections.reduce(
                 (acc, s) => acc + s._count.questions,
                 0
@@ -204,26 +210,29 @@ export default async function CandidateLobbyPage() {
                       code: <strong>{exam.accessCode.toLowerCase()}</strong>
                     </span>
 
-                    {exam.isLive ? (
-                      <>
-                        {isCompleted ? (
+                    {isFinalized ? (
                           <Link
                             href={`/exam/${session.id}/results`}
                             className="retro-btn-orange px-2.5 py-1 text-xs"
                           >
                             result
                           </Link>
-                        ) : isInProgress ? (
+                    ) : isInProgress ? (
                           <Link
                             href={`/exam/${session.id}/player`}
                             className="retro-btn-green px-2.5 py-1 text-xs inline-flex items-center gap-1"
                           >
                             <RotateCcw className="h-3 w-3" /> resume
                           </Link>
-                        ) : (
+                    ) : isNotStarted ? (
+                          <Link
+                            href={`/exam/${session.id}/instructions`}
+                            className="retro-btn-green px-2.5 py-1 text-xs inline-flex items-center gap-1"
+                          >
+                            <Play className="h-3 w-3" /> continue
+                          </Link>
+                    ) : exam.isLive ? (
                           <TakeExamButton examId={exam.id} />
-                        )}
-                      </>
                     ) : (
                       <span className="retro-btn px-2 py-0.5 text-[10px] text-slate-500 inline-flex items-center gap-1 opacity-70">
                         <Lock className="h-3 w-3" /> upcoming
