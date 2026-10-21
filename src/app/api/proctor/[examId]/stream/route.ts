@@ -1,17 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { subscribeProctor } from "@/lib/proctorBroadcast";
-import { requireStaffAccess } from "@/lib/authorization";
+import { requireExamStaffAccess } from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { examId: string } }
+  { params }: { params: Promise<{ examId: string }> }
 ) {
-  const authError = await requireStaffAccess();
+  const authError = await requireExamStaffAccess((await params).examId);
   if (authError) return authError;
 
-  const examId = params.examId;
+  const examId = (await params).examId;
 
   const responseStream = new TransformStream();
   const writer = responseStream.writable.getWriter();

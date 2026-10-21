@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireStaffAccess } from "@/lib/authorization";
+import { requireSectionContentAccess } from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await requireStaffAccess();
+  const authError = await requireSectionContentAccess((await params).id);
   if (authError) return authError;
 
   try {
-    const sectionId = params.id;
+    const sectionId = (await params).id;
     const body = await request.json();
     const { title, orderIndex } = body;
 
@@ -38,13 +38,13 @@ export async function PUT(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await requireStaffAccess();
+  const authError = await requireSectionContentAccess((await params).id);
   if (authError) return authError;
 
   try {
-    const sectionId = params.id;
+    const sectionId = (await params).id;
 
     // Delete questions and attempts first to respect relations
     const questions = await prisma.question.findMany({

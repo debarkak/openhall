@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireStaffAccess } from "@/lib/authorization";
+import { requireQuestionContentAccess } from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await requireStaffAccess();
+  const authError = await requireQuestionContentAccess((await params).id);
   if (authError) return authError;
 
   try {
-    const questionId = params.id;
+    const questionId = (await params).id;
     const body = await request.json();
     const { stem, diagramUrl, solutionExplanation, positiveMarks, negativePenalty, options } = body;
 
     // Update question metadata
-    const question = await prisma.question.update({
+    await prisma.question.update({
       where: { id: questionId },
       data: {
         stem: stem || "Question stem",
@@ -65,13 +65,13 @@ export async function PUT(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await requireStaffAccess();
+  const authError = await requireQuestionContentAccess((await params).id);
   if (authError) return authError;
 
   try {
-    const questionId = params.id;
+    const questionId = (await params).id;
 
     // Delete related attempts and options first
     await prisma.questionAttempt.deleteMany({

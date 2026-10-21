@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireStaffAccess } from "@/lib/authorization";
+import {
+  requireExamStaffAccess,
+  requireExamContentAccess,
+  requireUnusedExamAccess,
+} from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await requireStaffAccess();
+  const authError = await requireExamStaffAccess((await params).id);
   if (authError) return authError;
 
   try {
     const exam = await prisma.exam.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         sections: {
           orderBy: { orderIndex: "asc" },
@@ -35,23 +39,6 @@ export async function GET(
       return NextResponse.json({ error: "Exam not found" }, { status: 404 });
     }
 
-    // Auto-create default section if an exam has 0 sections
-    if (exam.sections.length === 0) {
-      const defaultSec = await prisma.section.create({
-        data: {
-          examId: exam.id,
-          title: "Section 1",
-          orderIndex: 0,
-        },
-        include: {
-          questions: {
-            include: { options: true },
-          },
-        },
-      });
-      exam.sections.push(defaultSec);
-    }
-
     return NextResponse.json(exam);
   } catch (error) {
     console.error("Exam detail fetch error:", error);
@@ -61,17 +48,22 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await requireStaffAccess();
+  const authError = await requireExamStaffAccess((await params).id);
   if (authError) return authError;
 
   try {
     const body = await request.json();
     const { title, description, instructions, durationSeconds, positiveMarks, negativePenalty, isLive } = body;
 
+    if (Object.keys(body).some((key) => key !== "isLive")) {
+      const contentError = await requireExamContentAccess((await params).id);
+      if (contentError) return contentError;
+    }
+
     const updated = await prisma.exam.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         title,
         description,
@@ -92,13 +84,13 @@ export async function PUT(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await requireStaffAccess();
+  const authError = await requireUnusedExamAccess((await params).id);
   if (authError) return authError;
 
   try {
-    const examId = params.id;
+    const examId = (await params).id;
 
     // Delete related sessions, attempts, sections
     const sessions = await prisma.examSession.findMany({

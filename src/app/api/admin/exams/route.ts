@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireStaffAccess } from "@/lib/authorization";
+import { authorizeStaff } from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const authError = await requireStaffAccess();
-  if (authError) return authError;
+  const access = await authorizeStaff();
+  if (!access.ok) return access.response;
 
   try {
     const exams = await prisma.exam.findMany({
+      where: access.role === "ADMIN" ? {} : { hostId: access.userId },
       orderBy: { createdAt: "desc" },
       include: {
         sections: {
@@ -34,20 +35,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const authError = await requireStaffAccess();
-  if (authError) return authError;
+  const access = await authorizeStaff();
+  if (!access.ok) return access.response;
 
   try {
     const body = await request.json();
     const { title, description, instructions, durationSeconds, positiveMarks, negativePenalty, accessCode } = body;
-
-    const host = await prisma.user.findFirst({
-      where: { role: "TEACHER" },
-    });
-
-    if (!host) {
-      return NextResponse.json({ error: "No teacher account found" }, { status: 400 });
-    }
 
     const exam = await prisma.exam.create({
       data: {
@@ -58,7 +51,7 @@ export async function POST(request: NextRequest) {
         positiveMarks: positiveMarks ? parseFloat(positiveMarks) : 4.0,
         negativePenalty: negativePenalty ? parseFloat(negativePenalty) : 0.0,
         accessCode: accessCode || `OH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-        hostId: host.id,
+        hostId: access.userId,
         isLive: true,
         sections: {
           create: [
