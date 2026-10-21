@@ -31,11 +31,11 @@ export function TakeExamButton({
         const data = await res.json();
         router.push(`/exam/${data.sessionId}/instructions`);
       } else {
-        alert("Failed to start exam session. Please try again.");
+        alert("failed to start exam session. please try again.");
         setIsLoading(false);
       }
     } catch {
-      alert("Network error starting exam.");
+      alert("network error starting exam.");
       setIsLoading(false);
     }
   };
@@ -50,13 +50,13 @@ export function TakeExamButton({
       {isLoading ? (
         <>
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          <span>Starting...</span>
+          <span>starting...</span>
         </>
       ) : (
         children || (
           <>
             <Play className="h-3.5 w-3.5 fill-current" />
-            <span>Take Test</span>
+            <span>take test</span>
           </>
         )
       )}

@@ -11,7 +11,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-sky-200" />
             <span className="text-xs sm:text-sm font-bold tracking-wide">
-              OpenHall — Exam System
+              openhall — exam system
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -33,19 +33,19 @@ export default function HomePage() {
             <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
-                  Open<span className="text-emerald-700">Hall</span>
+                  open<span className="text-emerald-700">hall</span>
                 </h1>
                 <p className="text-xs sm:text-sm font-semibold text-slate-600 mt-0.5">
-                  Self-hosted test runner and question composer
+                  self-hosted test runner and question composer
                 </p>
               </div>
               <div className="hidden sm:block retro-sunken-dark px-2.5 py-1 text-center font-mono text-xs">
-                <span className="text-emerald-400">STATUS: READY</span>
+                <span className="text-emerald-400">status: ready</span>
               </div>
             </div>
 
             <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-              Simple self-hosted test hall. Runs exams in locked fullscreen mode, renders KaTeX math equations, tracks tab switching, and calculates instant scores.
+              simple self-hosted test hall. runs exams in locked fullscreen mode, renders katex math equations, tracks tab switching, and calculates instant scores.
             </p>
           </div>
 
@@ -61,17 +61,17 @@ export default function HomePage() {
                   <div className="retro-btn flex h-7 w-7 items-center justify-center text-sky-800">
                     <GraduationCap className="h-4 w-4" />
                   </div>
-                  <h2 className="text-sm font-bold text-slate-900">Take an Exam</h2>
+                  <h2 className="text-sm font-bold text-slate-900">take an exam</h2>
                 </div>
                 <span className="retro-btn px-2 py-0.5 text-[10px] font-bold">
-                  STUDENT
+                  student
                 </span>
               </div>
               <p className="text-xs text-slate-600 mb-3 min-h-[32px]">
-                Browse scheduled tests, review exam rules, and launch into the fullscreen test player.
+                browse scheduled tests, review exam rules, and launch into the fullscreen test player.
               </p>
               <div className="retro-btn-green py-1.5 text-center text-xs flex items-center justify-center gap-1.5">
-                <span>Go to Student Lobby</span>
+                <span>go to student lobby</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </div>
             </Link>
@@ -86,17 +86,17 @@ export default function HomePage() {
                   <div className="retro-btn flex h-7 w-7 items-center justify-center text-amber-800">
                     <Laptop className="h-4 w-4" />
                   </div>
-                  <h2 className="text-sm font-bold text-slate-900">Teacher Studio</h2>
+                  <h2 className="text-sm font-bold text-slate-900">teacher studio</h2>
                 </div>
                 <span className="retro-btn px-2 py-0.5 text-[10px] font-bold">
-                  ADMIN
+                  admin
                 </span>
               </div>
               <p className="text-xs text-slate-600 mb-3 min-h-[32px]">
-                Create new tests, write questions with LaTeX formulas, manage sections, and watch live candidate proctoring.
+                create new tests, write questions with latex formulas, manage sections, and watch live candidate proctoring.
               </p>
               <div className="retro-btn-orange py-1.5 text-center text-xs flex items-center justify-center gap-1.5">
-                <span>Open Studio</span>
+                <span>open studio</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </div>
             </Link>
@@ -104,9 +104,9 @@ export default function HomePage() {
 
           {/* Status Bar */}
           <div className="retro-sunken mt-5 flex flex-wrap items-center justify-between bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600">
-            <span>Self-Hosted Next.js &amp; SQLite</span>
-            <span>Fullscreen Lockdown Active</span>
-            <span>Port 3000</span>
+            <span>self-hosted next.js &amp; sqlite</span>
+            <span>fullscreen lockdown active</span>
+            <span>port 3000</span>
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Play, RotateCcw, Lock, GraduationCap, FileText, Info, ShieldAlert } from "lucide-react";
+import { Play, RotateCcw, Lock, GraduationCap, FileText, Info } from "lucide-react";
 import { TakeExamButton } from "@/components/lobby/TakeExamButton";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export default async function CandidateLobbyPage() {
     candidate = await prisma.user.create({
       data: {
         email: "debarkak@murena.io",
-        name: "Debarka Kundu",
+        name: "debarka kundu",
         role: "CANDIDATE",
       },
     });
@@ -55,27 +55,27 @@ export default async function CandidateLobbyPage() {
           <Link href="/" className="flex items-center gap-1.5 hover:opacity-90">
             <GraduationCap className="h-4 w-4 text-sky-200" />
             <span className="text-sm font-black tracking-tight text-white">
-              Open<span className="text-emerald-300">Hall</span>
+              open<span className="text-emerald-300">hall</span>
             </span>
           </Link>
           <span className="retro-btn bg-slate-200 px-2 py-0.5 text-[10px] text-slate-800">
-            STUDENT LOBBY
+            student lobby
           </span>
         </div>
 
         {/* Candidate Profile Info */}
         <div className="flex items-center gap-2">
           <span className="hidden sm:inline-block text-xs font-bold text-slate-200">
-            {candidate.name}
+            {candidate.name.toLowerCase()}
           </span>
           <div className="retro-btn flex h-7 w-7 items-center justify-center text-xs font-black text-slate-800">
-            {candidate.name.split(" ").map((n) => n[0]).join("")}
+            {candidate.name.split(" ").map((n) => n[0].toLowerCase()).join("")}
           </div>
           <Link
             href="/studio"
             className="retro-btn px-2.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-slate-100"
           >
-            Studio &rarr;
+            studio &rarr;
           </Link>
         </div>
       </header>
@@ -87,18 +87,18 @@ export default async function CandidateLobbyPage() {
           <div className="retro-sunken bg-white p-4 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2.5 mb-3">
               <span className="retro-btn bg-emerald-100 text-emerald-900 px-2 py-0.5 text-[10px] font-bold">
-                CANDIDATE: {candidate.name}
+                candidate: {candidate.name.toLowerCase()}
               </span>
               <span className="text-xs font-mono text-slate-500">
-                {exams.length} Test{exams.length === 1 ? "" : "s"} Available
+                {exams.length} test{exams.length === 1 ? "" : "s"} available
               </span>
             </div>
 
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
-              Exam Lobby
+              exam lobby
             </h1>
             <p className="mt-1 text-xs sm:text-sm text-slate-600 leading-relaxed max-w-2xl">
-              Select an exam below to begin. Once launched, tests run in fullscreen mode. Keep your focus on the test window to avoid integrity warnings.
+              select an exam below to begin. once launched, tests run in fullscreen mode. keep your focus on the test window to avoid integrity warnings.
             </p>
 
             {heroExam && (
@@ -109,7 +109,7 @@ export default async function CandidateLobbyPage() {
                     className="retro-btn-orange px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5"
                   >
                     <FileText className="h-3.5 w-3.5" />
-                    View Result ({heroExam.title})
+                    view result ({heroExam.title.toLowerCase()})
                   </Link>
                 ) : heroSession?.status === "IN_PROGRESS" ? (
                   <Link
@@ -117,7 +117,7 @@ export default async function CandidateLobbyPage() {
                     className="retro-btn-green px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5"
                   >
                     <Play className="h-3.5 w-3.5 fill-white" />
-                    Resume ({heroExam.title})
+                    resume ({heroExam.title.toLowerCase()})
                   </Link>
                 ) : (
                   <TakeExamButton
@@ -125,7 +125,7 @@ export default async function CandidateLobbyPage() {
                     className="retro-btn-green px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
                   >
                     <Play className="h-3.5 w-3.5 fill-white" />
-                    Start {heroExam.title}
+                    start {heroExam.title.toLowerCase()}
                   </TakeExamButton>
                 )}
 
@@ -133,7 +133,7 @@ export default async function CandidateLobbyPage() {
                   href="/studio"
                   className="retro-btn px-3.5 py-1.5 text-xs font-bold"
                 >
-                  Create New Test in Studio
+                  create new test in studio
                 </Link>
               </div>
             )}
@@ -143,11 +143,11 @@ export default async function CandidateLobbyPage() {
         {/* Assigned Test Series */}
         <div className="mb-6">
           <div className="retro-panel flex items-center justify-between px-4 py-2 mb-3">
-            <h2 className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wide">
-              Tests
+            <h2 className="text-xs sm:text-sm font-black text-slate-900 tracking-wide">
+              tests
             </h2>
             <span className="retro-sunken px-2 py-0.5 text-xs font-bold text-slate-700">
-              {exams.length} Total
+              {exams.length} total
             </span>
           </div>
 
@@ -160,7 +160,7 @@ export default async function CandidateLobbyPage() {
                 (acc, s) => acc + s._count.questions,
                 0
               );
-              const sectionNames = exam.sections.map((s) => s.title).join(", ") || "General";
+              const sectionNames = exam.sections.map((s) => s.title.toLowerCase()).join(", ") || "general";
 
               return (
                 <div
@@ -171,30 +171,30 @@ export default async function CandidateLobbyPage() {
                     {/* Header bar within card */}
                     <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-300">
                       <span
-                        className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 border ${
+                        className={`text-[9px] font-bold tracking-wider px-1.5 py-0.5 border ${
                           exam.isLive
                             ? "bg-emerald-100 text-emerald-900 border-emerald-300"
                             : "bg-slate-200 text-slate-600 border-slate-300"
                         }`}
                       >
-                        {exam.isLive ? "LIVE" : "LOCKED"}
+                        {exam.isLive ? "live" : "locked"}
                       </span>
                       <span className="retro-sunken px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-700">
-                        {Math.floor(exam.durationSeconds / 60)} Mins
+                        {Math.floor(exam.durationSeconds / 60)} mins
                       </span>
                     </div>
 
                     <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">
-                      {exam.title}
+                      {exam.title.toLowerCase()}
                     </h3>
                     <p className="mt-1 text-[11px] text-slate-500 line-clamp-2">
-                      {totalQuestions} Question{totalQuestions === 1 ? "" : "s"} • {sectionNames}
+                      {totalQuestions} question{totalQuestions === 1 ? "" : "s"} • {sectionNames}
                     </p>
                   </div>
 
                   <div className="mt-4 pt-2.5 border-t border-slate-300 flex items-center justify-between">
                     <span className="text-[10px] font-mono text-slate-600">
-                      CODE: <strong>{exam.accessCode}</strong>
+                      code: <strong>{exam.accessCode.toLowerCase()}</strong>
                     </span>
 
                     {exam.isLive ? (
@@ -204,14 +204,14 @@ export default async function CandidateLobbyPage() {
                             href={`/exam/${session.id}/results`}
                             className="retro-btn-orange px-2.5 py-1 text-xs"
                           >
-                            Result
+                            result
                           </Link>
                         ) : isInProgress ? (
                           <Link
                             href={`/exam/${session.id}/player`}
                             className="retro-btn-green px-2.5 py-1 text-xs inline-flex items-center gap-1"
                           >
-                            <RotateCcw className="h-3 w-3" /> Resume
+                            <RotateCcw className="h-3 w-3" /> resume
                           </Link>
                         ) : (
                           <TakeExamButton examId={exam.id} />
@@ -219,7 +219,7 @@ export default async function CandidateLobbyPage() {
                       </>
                     ) : (
                       <span className="retro-btn px-2 py-0.5 text-[10px] text-slate-500 inline-flex items-center gap-1 opacity-70">
-                        <Lock className="h-3 w-3" /> Upcoming
+                        <Lock className="h-3 w-3" /> upcoming
                       </span>
                     )}
                   </div>
@@ -232,17 +232,17 @@ export default async function CandidateLobbyPage() {
         {/* Quick Instructions / Ground Rules Box */}
         <div className="retro-window p-3.5">
           <div className="retro-titlebar mb-2.5 py-1">
-            <span className="text-[11px] font-bold uppercase tracking-wide flex items-center gap-1.5">
+            <span className="text-[11px] font-bold tracking-wide flex items-center gap-1.5">
               <Info className="h-3.5 w-3.5 text-sky-200" />
-              Test Guidelines &amp; Anti-Cheat Rules
+              test guidelines &amp; anti-cheat rules
             </span>
           </div>
 
           <div className="retro-sunken bg-white p-3 space-y-1.5 text-xs text-slate-700">
-            <p>• <strong>Fullscreen Enforcement:</strong> Tests run full-screen. Pressing Esc will pause the test behind a lockout screen until you re-enter fullscreen.</p>
-            <p>• <strong>No Tab Switching:</strong> Alt-Tab or switching away from the exam tab logs a violation strike. 3 strikes will submit and disqualify the exam.</p>
-            <p>• <strong>Free Navigation:</strong> You can jump between sections and questions at any time using the palette on the right.</p>
-            <p>• <strong>Saving:</strong> Click <strong>[Save &amp; Next]</strong> to record answers.</p>
+            <p>• <strong>fullscreen enforcement:</strong> tests run full-screen. pressing esc will pause the test behind a lockout screen until you re-enter fullscreen.</p>
+            <p>• <strong>no tab switching:</strong> alt-tab or switching away from the exam tab logs a violation strike. 3 strikes will submit and disqualify the exam.</p>
+            <p>• <strong>free navigation:</strong> you can jump between sections and questions at any time using the palette on the right.</p>
+            <p>• <strong>saving:</strong> click <strong>[save &amp; next]</strong> to record answers.</p>
           </div>
         </div>
       </main>

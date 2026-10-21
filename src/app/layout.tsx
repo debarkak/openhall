@@ -3,8 +3,8 @@ import "./globals.css";
 import "katex/dist/katex.min.css";
 
 export const metadata: Metadata = {
-  title: "OpenHall — Online Examination System",
-  description: "Self-hosted exam runner with locked fullscreen mode, LaTeX math, and live proctoring.",
+  title: "openhall — online examination system",
+  description: "self-hosted exam runner with locked fullscreen mode, latex math, and live proctoring.",
 };
 
 export default function RootLayout({
