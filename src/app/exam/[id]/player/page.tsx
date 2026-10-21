@@ -11,7 +11,8 @@ import { SubmissionSpinner } from "@/components/exam/SubmissionSpinner";
 import { useBrowserLockdown } from "@/lib/anticheat";
 import { persistAttemptLocally, getLocalAttempts } from "@/lib/storage";
 import { CandidateExamManifest, ItemStatus } from "@/lib/types";
-import { Check, Info, AlertTriangle, X } from "lucide-react";
+import { Check, Info, AlertTriangle, X, ShieldAlert, Maximize2, XCircle } from "lucide-react";
+import Link from "next/link";
 
 export default function ExamPlayerPage({
   params,
@@ -51,10 +52,20 @@ export default function ExamPlayerPage({
   // Server-authoritative timer countdown (seconds remaining)
   const [remainingSeconds, setRemainingSeconds] = useState<number>(5400);
 
-  // Browser Lockdown
-  useBrowserLockdown({
+  // Browser Lockdown with Real-Time Fullscreen Enforcement and 3-Strike Disqualification
+  const {
+    isFullscreenLocked,
+    strikes,
+    maxStrikes,
+    isDisqualified,
+    activeViolationModal,
+    blockedKeyToast,
+    reEnterFullscreen,
+    dismissViolationModal,
+  } = useBrowserLockdown({
     sessionId,
     enabled: !isSubmitting && !!manifest,
+    maxStrikes: 3,
   });
 
   // 1. Fetch sanitized manifest on mount
@@ -526,6 +537,100 @@ export default function ExamPlayerPage({
         </div>
       )}
 
+      {/* 1. Blocked Key Shortcut Warning Toast */}
+      {blockedKeyToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-xl bg-slate-900 border border-slate-700 px-4 py-2.5 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-top-2">
+          <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+          <span>{blockedKeyToast}</span>
+        </div>
+      )}
+
+      {/* 2. Fullscreen Integrity Lockout Overlay */}
+      {isFullscreenLocked && !isDisqualified && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-6 text-white text-center select-none">
+          <div className="max-w-md w-full rounded-2xl border border-red-500/40 bg-slate-900 p-8 shadow-2xl">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/20 text-red-500">
+              <ShieldAlert className="h-8 w-8" />
+            </div>
+            <h2 className="mt-4 text-xl font-extrabold tracking-tight text-white">
+              Fullscreen Lockdown Enforced
+            </h2>
+            <p className="mt-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
+              OpenHall assessment mode requires Fullscreen. All question viewing and input are frozen until you return to Fullscreen mode.
+            </p>
+            {strikes > 0 && (
+              <div className="mt-4 rounded-lg bg-red-950/60 border border-red-500/30 p-2.5 text-xs text-red-300 font-semibold">
+                Recorded Integrity Violations: <strong>{strikes} / {maxStrikes} Strikes</strong>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={reEnterFullscreen}
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-green px-8 py-3 text-sm font-bold text-white shadow-lg hover:bg-brand-green-hover active:scale-95 transition cursor-pointer"
+            >
+              <Maximize2 className="h-4 w-4" />
+              Enter Fullscreen &amp; Unlock Exam
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Strike Violation Warning Dialog */}
+      {activeViolationModal && !isDisqualified && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4 select-none">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border-2 border-red-500 text-slate-900 animate-in zoom-in-95">
+            <div className="flex items-center gap-3 text-red-600">
+              <AlertTriangle className="h-6 w-6 shrink-0" />
+              <h3 className="text-base font-extrabold uppercase tracking-tight">
+                Integrity Alert: Window Focus Lost
+              </h3>
+            </div>
+            <p className="mt-3 text-xs sm:text-sm text-slate-600 leading-relaxed">
+              {activeViolationModal.message}
+            </p>
+            <div className="mt-4 rounded-xl bg-red-50 border border-red-200 p-3 flex items-center justify-between text-xs font-bold text-red-800">
+              <span>Violation Strike Recorded:</span>
+              <span className="font-mono text-sm">{activeViolationModal.strike} of {maxStrikes}</span>
+            </div>
+            <p className="mt-2 text-[11px] text-slate-400">
+              Accumulating 3 strikes will permanently terminate and disqualify your exam attempt.
+            </p>
+            <button
+              type="button"
+              onClick={dismissViolationModal}
+              className="mt-5 w-full rounded-xl bg-slate-900 py-3 text-xs sm:text-sm font-bold text-white hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+            >
+              I Acknowledge — Return to Exam
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Permanent Disqualification Lockout Screen */}
+      {isDisqualified && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-6 text-white text-center select-none">
+          <div className="max-w-md w-full rounded-2xl border-2 border-red-600 bg-red-950/90 p-8 shadow-2xl">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20 text-red-500">
+              <XCircle className="h-10 w-10" />
+            </div>
+            <h2 className="mt-4 text-2xl font-black tracking-tight text-white uppercase">
+              Exam Disqualified
+            </h2>
+            <p className="mt-3 text-xs sm:text-sm text-red-200 leading-relaxed">
+              Your examination session has been terminated due to exceeding the maximum allowed integrity violations (3 Strikes). All test interactions are locked and logged in the telemetry audit.
+            </p>
+            <div className="mt-6">
+              <Link
+                href={`/exam/${sessionId}/results`}
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-2.5 text-xs font-bold text-red-950 hover:bg-slate-100 transition"
+              >
+                View Incident Scorecard
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Instructions Popup Modal */}
       {isInstructionsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
@@ -555,6 +660,100 @@ export default function ExamPlayerPage({
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1. Blocked Key Shortcut Warning Toast */}
+      {blockedKeyToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-xl bg-slate-900 border border-slate-700 px-4 py-2.5 text-xs font-semibold text-white shadow-2xl animate-in fade-in slide-in-from-top-2">
+          <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+          <span>{blockedKeyToast}</span>
+        </div>
+      )}
+
+      {/* 2. Fullscreen Integrity Lockout Overlay */}
+      {isFullscreenLocked && !isDisqualified && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-6 text-white text-center select-none">
+          <div className="max-w-md w-full rounded-2xl border border-red-500/40 bg-slate-900 p-8 shadow-2xl">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/20 text-red-500">
+              <ShieldAlert className="h-8 w-8" />
+            </div>
+            <h2 className="mt-4 text-xl font-extrabold tracking-tight text-white">
+              Fullscreen Lockdown Enforced
+            </h2>
+            <p className="mt-2 text-xs sm:text-sm text-slate-300 leading-relaxed">
+              OpenHall assessment mode requires Fullscreen. All question viewing and input are frozen until you return to Fullscreen mode.
+            </p>
+            {strikes > 0 && (
+              <div className="mt-4 rounded-lg bg-red-950/60 border border-red-500/30 p-2.5 text-xs text-red-300 font-semibold">
+                Recorded Integrity Violations: <strong>{strikes} / {maxStrikes} Strikes</strong>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={reEnterFullscreen}
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-green px-8 py-3 text-sm font-bold text-white shadow-lg hover:bg-brand-green-hover active:scale-95 transition cursor-pointer"
+            >
+              <Maximize2 className="h-4 w-4" />
+              Enter Fullscreen &amp; Unlock Exam
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Strike Violation Warning Dialog */}
+      {activeViolationModal && !isDisqualified && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4 select-none">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border-2 border-red-500 text-slate-900 animate-in zoom-in-95">
+            <div className="flex items-center gap-3 text-red-600">
+              <AlertTriangle className="h-6 w-6 shrink-0" />
+              <h3 className="text-base font-extrabold uppercase tracking-tight">
+                Integrity Alert: Window Focus Lost
+              </h3>
+            </div>
+            <p className="mt-3 text-xs sm:text-sm text-slate-600 leading-relaxed">
+              {activeViolationModal.message}
+            </p>
+            <div className="mt-4 rounded-xl bg-red-50 border border-red-200 p-3 flex items-center justify-between text-xs font-bold text-red-800">
+              <span>Violation Strike Recorded:</span>
+              <span className="font-mono text-sm">{activeViolationModal.strike} of {maxStrikes}</span>
+            </div>
+            <p className="mt-2 text-[11px] text-slate-400">
+              Accumulating 3 strikes will permanently terminate and disqualify your exam attempt.
+            </p>
+            <button
+              type="button"
+              onClick={dismissViolationModal}
+              className="mt-5 w-full rounded-xl bg-slate-900 py-3 text-xs sm:text-sm font-bold text-white hover:bg-slate-800 active:scale-95 transition cursor-pointer"
+            >
+              I Acknowledge — Return to Exam
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Permanent Disqualification Lockout Screen */}
+      {isDisqualified && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-6 text-white text-center select-none">
+          <div className="max-w-md w-full rounded-2xl border-2 border-red-600 bg-red-950/90 p-8 shadow-2xl">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20 text-red-500">
+              <XCircle className="h-10 w-10" />
+            </div>
+            <h2 className="mt-4 text-2xl font-black tracking-tight text-white uppercase">
+              Exam Disqualified
+            </h2>
+            <p className="mt-3 text-xs sm:text-sm text-red-200 leading-relaxed">
+              Your examination session has been terminated due to exceeding the maximum allowed integrity violations (3 Strikes). All test interactions are locked and logged in the telemetry audit.
+            </p>
+            <div className="mt-6">
+              <Link
+                href={`/exam/${sessionId}/results`}
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-6 py-2.5 text-xs font-bold text-red-950 hover:bg-slate-100 transition"
+              >
+                View Incident Scorecard
+              </Link>
             </div>
           </div>
         </div>
