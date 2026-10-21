@@ -48,7 +48,11 @@ async function main() {
     },
   });
 
-  // Delete existing sections to cleanly reseed
+  // Delete existing attempts and questions to cleanly reseed
+  await prisma.questionAttempt.deleteMany({});
+  await prisma.proctorLog.deleteMany({});
+  await prisma.option.deleteMany({});
+  await prisma.question.deleteMany({});
   await prisma.section.deleteMany({ where: { examId: exam.id } });
 
   // SECTION 1: Mental Ability Test (MAT) - 20 questions
