@@ -159,7 +159,7 @@ export function clearSessionCookie(response: NextResponse): void {
  */
 export async function getCurrentUser(): Promise<SessionUser | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
     if (!sessionCookie?.value) return null;
     return verifySessionToken(sessionCookie.value);
