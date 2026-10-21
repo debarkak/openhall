@@ -3,8 +3,8 @@ import "./globals.css";
 import "katex/dist/katex.min.css";
 
 export const metadata: Metadata = {
-  title: "OpenHall — Self-Hosted Examination Platform",
-  description: "Self-hosted webserver for creating and conducting examinations with strict integrity and zero-trust delivery.",
+  title: "OpenHall — Online Examination System",
+  description: "Self-hosted exam runner with locked fullscreen mode, LaTeX math, and live proctoring.",
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-800 antialiased selection:bg-brand-green/20">
+      <body className="min-h-screen antialiased">
         {children}
       </body>
     </html>
