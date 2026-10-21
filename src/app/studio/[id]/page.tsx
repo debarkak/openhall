@@ -127,6 +127,8 @@ export default function QuestionComposerPage({
 
   // Ref array for option inputs to enable fluid Google Forms Enter key hopping
   const optionInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const stemInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const stemSelectionRef = useRef({ start: 0, end: 0 });
 
   const loadExamDetail = async (preserveSectionId?: string) => {
     try {
@@ -153,6 +155,7 @@ export default function QuestionComposerPage({
     setSelectedSectionId(secId);
     setSelectedQuestion(q);
     setStem(q.stem);
+    stemSelectionRef.current = { start: q.stem.length, end: q.stem.length };
     setDiagramUrl(q.diagramUrl || "");
     setShowDiagramInput(!!q.diagramUrl);
     setSolutionExplanation(q.solutionExplanation || "");
@@ -173,6 +176,7 @@ export default function QuestionComposerPage({
     }
     setSelectedQuestion(null);
     setStem("");
+    stemSelectionRef.current = { start: 0, end: 0 };
     setDiagramUrl("");
     setShowDiagramInput(false);
     setSolutionExplanation("");
@@ -210,7 +214,20 @@ export default function QuestionComposerPage({
   };
 
   const insertMacro = (macro: string) => {
-    setStem((prev) => prev + macro);
+    const start = Math.max(0, Math.min(stemSelectionRef.current.start, stem.length));
+    const end = Math.max(start, Math.min(stemSelectionRef.current.end, stem.length));
+    const nextStem = `${stem.slice(0, start)}${macro}${stem.slice(end)}`;
+    const caret = start + macro.length;
+
+    setStem(nextStem);
+    stemSelectionRef.current = { start: caret, end: caret };
+
+    requestAnimationFrame(() => {
+      const textarea = stemInputRef.current;
+      if (!textarea) return;
+      textarea.focus();
+      textarea.setSelectionRange(caret, caret);
+    });
   };
 
   const handleAddOption = () => {
@@ -754,9 +771,22 @@ export default function QuestionComposerPage({
                   </div>
 
                   <textarea
+                    ref={stemInputRef}
                     rows={3}
                     value={stem}
-                    onChange={(e) => setStem(e.target.value)}
+                    onChange={(e) => {
+                      setStem(e.target.value);
+                      stemSelectionRef.current = {
+                        start: e.currentTarget.selectionStart,
+                        end: e.currentTarget.selectionEnd,
+                      };
+                    }}
+                    onSelect={(e) => {
+                      stemSelectionRef.current = {
+                        start: e.currentTarget.selectionStart,
+                        end: e.currentTarget.selectionEnd,
+                      };
+                    }}
                     placeholder="type question stem here (e.g. calculate the gaussian integral: $\int_{0}^{\infty} e^{-x^2} dx$)..."
                     className="retro-field w-full text-xs sm:text-sm font-sans p-3 leading-relaxed"
                   />
