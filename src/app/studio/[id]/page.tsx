@@ -121,6 +121,31 @@ export default function QuestionComposerPage({
     );
   };
 
+  const handleAddSection = async () => {
+    const title = prompt("Enter new section name (e.g. Section 2, Physics, General):");
+    if (!title || !title.trim()) return;
+
+    try {
+      const res = await fetch(`/api/admin/exams/${examId}/sections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: title.trim() }),
+      });
+
+      if (res.ok) {
+        const newSec: SectionItem = await res.json();
+        await loadExamDetail(newSec.id);
+        setSelectedSectionId(newSec.id);
+        handleNewQuestion();
+        setFeedback({ type: "success", message: `Section "${newSec.title}" created successfully!` });
+      } else {
+        setFeedback({ type: "error", message: "Failed to create section." });
+      }
+    } catch {
+      setFeedback({ type: "error", message: "Network error creating section." });
+    }
+  };
+
   const handleNewQuestion = () => {
     setSelectedQuestion(null);
     setStem("");
@@ -276,8 +301,15 @@ export default function QuestionComposerPage({
         <aside className="w-full md:w-80 shrink-0 border-r border-slate-200 bg-white p-4 overflow-y-auto">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Sections
+              Sections ({exam.sections.length})
             </span>
+            <button
+              type="button"
+              onClick={handleAddSection}
+              className="flex items-center gap-1 text-[11px] font-bold text-brand-green hover:underline cursor-pointer"
+            >
+              <Plus className="h-3 w-3" /> Add Section
+            </button>
           </div>
 
           {/* Section Selector */}
