@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 
 interface SaveAttemptModalProps {
   isOpen: boolean;
@@ -19,48 +19,52 @@ export const SaveAttemptModal: React.FC<SaveAttemptModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in slide-in-from-bottom duration-200">
-        {/* Header with Title and Close X */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+      {/* Classic 3D Modal Window */}
+      <div className="retro-window w-full max-w-md overflow-hidden">
+        {/* Title Bar */}
+        <div className="retro-titlebar">
           <div className="flex items-center gap-2">
-            <span className="text-base font-bold uppercase tracking-wide text-slate-800">
-              SAVE ATTEMPT
+            <HelpCircle className="h-4 w-4 text-sky-200" />
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Save Attempt Confirmation
             </span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition"
+            className="retro-btn flex h-5 w-5 items-center justify-center text-[10px] text-red-700"
             aria-label="Close modal"
           >
-            <X className="h-5 w-5" />
+            ✕
           </button>
         </div>
 
         {/* Modal Description */}
-        <div className="py-4 text-sm leading-relaxed text-slate-600">
-          Save this question&apos;s attempt? Use{" "}
-          <strong className="text-brand-green font-semibold">[Save and Next]</strong> at
-          the bottom to avoid this popup from appearing again.
-        </div>
+        <div className="p-4 sm:p-5">
+          <div className="retro-sunken bg-white p-4 text-xs sm:text-sm text-slate-800 leading-relaxed mb-4">
+            Do you want to save this question&apos;s selected option? Use{" "}
+            <strong className="text-emerald-800">[Save & Next]</strong> at
+            the bottom bar to record answers without triggering this guardrail prompt.
+          </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="w-24 rounded-lg border border-slate-300 bg-white py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 active:scale-95 transition"
-          >
-            No
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="w-24 rounded-lg bg-brand-green py-2 text-sm font-bold text-white shadow-sm hover:bg-brand-green-hover active:scale-95 transition"
-          >
-            Yes
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="retro-btn min-w-[80px] py-1.5 text-xs font-bold"
+            >
+              Discard (No)
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="retro-btn-green min-w-[80px] py-1.5 text-xs font-bold"
+            >
+              Save (Yes)
+            </button>
+          </div>
         </div>
       </div>
     </div>
