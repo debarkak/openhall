@@ -1,0 +1,112 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id          String        @id @default(cuid())
+  email       String        @unique
+  name        String
+  role        String        @default("CANDIDATE") // "ADMIN", "TEACHER", "CANDIDATE"
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  hostedExams Exam[]        @relation("HostRelation")
+  sessions    ExamSession[]
+}
+
+model Exam {
+  id               String        @id @default(cuid())
+  title            String
+  description      String?
+  instructions     String?
+  durationSeconds  Int           @default(5400) // 90 minutes
+  positiveMarks    Float         @default(4.0)
+  negativePenalty  Float         @default(0.0)
+  navigationPolicy String        @default("FREE_HOPPING") // "FREE_HOPPING", "SECTION_LOCKED"
+  isLive           Boolean       @default(false)
+  accessCode       String        @unique
+  hostId           String
+  host             User          @relation("HostRelation", fields: [hostId], references: [id])
+  sections         Section[]
+  sessions         ExamSession[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model Section {
+  id         String     @id @default(cuid())
+  examId     String
+  exam       Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  title      String     // e.g. "General Aptitude", "Mathematics", "Natural Sciences"
+  orderIndex Int        @default(0)
+  questions  Question[]
+}
+
+model Question {
+  id                  String            @id @default(cuid())
+  sectionId           String
+  section             Section           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  orderIndex          Int               @default(0)
+  stem                String            // Markdown and KaTeX math formulas
+  diagramUrl          String?           // Visual diagram / chart
+  solutionExplanation String?           // Disclosed post-exam
+  positiveMarks       Float?
+  negativePenalty     Float?
+  options             Option[]
+  attempts            QuestionAttempt[]
+}
+
+model Option {
+  id         String            @id @default(cuid())
+  questionId String
+  question   Question          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  orderIndex Int               @default(0)
+  text       String
+  imageUrl   String?
+  isCorrect  Boolean           @default(false) // Zero-trust: stripped from candidate bundles
+  attempts   QuestionAttempt[]
+}
+
+model ExamSession {
+  id          String            @id @default(cuid())
+  examId      String
+  exam        Exam              @relation(fields: [examId], references: [id])
+  candidateId String
+  candidate   User              @relation(fields: [candidateId], references: [id])
+  status      String            @default("NOT_STARTED") // "NOT_STARTED", "IN_PROGRESS", "SUBMITTED", "EVALUATED", "DISQUALIFIED"
+  startedAt   DateTime?
+  deadline    DateTime?         // Server-authoritative absolute expiration
+  submittedAt DateTime?
+  totalScore  Float?
+  attempts    QuestionAttempt[]
+  proctorLogs ProctorLog[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model QuestionAttempt {
+  id             String      @id @default(cuid())
+  sessionId      String
+  session        ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question    @relation(fields: [questionId], references: [id])
+  selectedOption Option?     @relation(fields: [optionId], references: [id])
+  optionId       String?
+  status         String      @default("UNVISITED") // "UNVISITED", "VISITED_UNANSWERED", "ATTEMPTED_SAVED"
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([sessionId, questionId])
+}
+
+model ProctorLog {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  eventType String      // "FULLSCREEN_EXIT", "TAB_SWITCH", "DEVTOOLS_KEY", "MULTIPLE_DISPLAYS"
+  timestamp DateTime    @default(now())
+  metadata  String?     // JSON payload
+}
