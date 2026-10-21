@@ -66,7 +66,7 @@ export const ScorecardTable: React.FC<ScorecardTableProps> = ({ result }) => {
               {result.examTitle.toLowerCase()}
             </h1>
             <p className="mt-0.5 text-xs text-slate-500">
-              candidate: {(result.candidateName || "debarka kundu").toLowerCase()}
+              candidate: {(result.candidateName || "student candidate").toLowerCase()}
             </p>
 
             {/* Score Box */}

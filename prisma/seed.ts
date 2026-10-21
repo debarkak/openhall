@@ -7,12 +7,12 @@ async function main() {
 
   // 1. Create or upsert Host / Teacher
   const host = await prisma.user.upsert({
-    where: { email: "debarkak@murena.io" },
+    where: { email: "teacher@openhall.internal" },
     update: {},
     create: {
-      id: "host_debarka",
-      email: "debarkak@murena.io",
-      name: "Debarka Kundu",
+      id: "host_teacher",
+      email: "teacher@openhall.internal",
+      name: "Teacher Host",
       role: "TEACHER",
     },
   });
@@ -22,9 +22,9 @@ async function main() {
     where: { email: "student@openhall.internal" },
     update: {},
     create: {
-      id: "cand_debarka",
+      id: "cand_student",
       email: "student@openhall.internal",
-      name: "Debarka",
+      name: "Student Candidate",
       role: "CANDIDATE",
     },
   });

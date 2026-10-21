@@ -29,7 +29,7 @@ export default function LiveProctorCockpitPage({
   const [candidates, setCandidates] = useState<LiveCandidate[]>([
     {
       sessionId: "session_demo_1",
-      name: "debarka kundu",
+      name: "candidate 01",
       status: "IN_PROGRESS",
       currentQuestion: "q1",
       violationsCount: 0,

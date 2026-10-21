@@ -12,49 +12,44 @@ function hashPassword(password) {
 async function initCredentials() {
   console.log("🔐 Initializing encrypted credentials in OpenHall database...");
 
+  const teacherPassword = process.env.INITIAL_TEACHER_PASSWORD || "teacher123";
+  const studentPassword = process.env.INITIAL_STUDENT_PASSWORD || "student123";
+
   // 1. Teacher Account
-  const teacherHash = hashPassword("teacher123");
+  const teacherHash = hashPassword(teacherPassword);
   const teacher = await prisma.user.upsert({
     where: { email: "teacher@openhall.edu" },
     update: {
       passwordHash: teacherHash,
       role: "TEACHER",
-      name: "teacher debarka",
+      name: "teacher",
     },
     create: {
       email: "teacher@openhall.edu",
-      name: "teacher debarka",
+      name: "teacher",
       role: "TEACHER",
       passwordHash: teacherHash,
     },
   });
   console.log(`✅ Teacher Account Configured: ${teacher.email} [Role: ${teacher.role}]`);
-  console.log(`   Encrypted Hash stored: ${teacher.passwordHash.slice(0, 24)}... (Salt + 64-byte scrypt key)`);
 
   // 2. Student Account
-  const studentHash = hashPassword("student123");
+  const studentHash = hashPassword(studentPassword);
   const student = await prisma.user.upsert({
     where: { email: "student@openhall.edu" },
     update: {
       passwordHash: studentHash,
       role: "CANDIDATE",
-      name: "student debarka",
+      name: "student",
     },
     create: {
       email: "student@openhall.edu",
-      name: "student debarka",
+      name: "student",
       role: "CANDIDATE",
       passwordHash: studentHash,
     },
   });
   console.log(`✅ Student Account Configured: ${student.email} [Role: ${student.role}]`);
-  console.log(`   Encrypted Hash stored: ${student.passwordHash.slice(0, 24)}... (Salt + 64-byte scrypt key)`);
-
-  // 3. Update existing debarkak@murena.io with default password hash as well
-  await prisma.user.updateMany({
-    where: { email: "debarkak@murena.io" },
-    data: { passwordHash: studentHash },
-  });
 
   console.log("🔒 Credentials encryption initialization complete.");
   await prisma.$disconnect();

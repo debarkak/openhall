@@ -120,12 +120,12 @@ async function runCredentialsAndEncryptionTests() {
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '03_student_lobby_authenticated.png') });
 
     const studentLobbyText = await page.evaluate(() => document.body.innerText);
-    const hasStudentSession = page.url().includes('lobby') && studentLobbyText.includes('sign out') && studentLobbyText.includes('student debarka');
+    const hasStudentSession = page.url().includes('lobby') && studentLobbyText.includes('sign out') && studentLobbyText.includes('student');
     console.log('   Student Session in Lobby Verified:', hasStudentSession);
     report.push({
       test: '3. Student Encrypted Login Flow',
       status: hasStudentSession ? 'PASS' : 'FAIL',
-      details: 'Signed in as student debarka at /lobby',
+      details: 'Signed in as student at /lobby',
     });
 
     // Sign out
@@ -158,12 +158,12 @@ async function runCredentialsAndEncryptionTests() {
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '05_teacher_studio_authenticated.png') });
 
     const teacherStudioText = await page.evaluate(() => document.body.innerText);
-    const hasTeacherSession = page.url().includes('studio') && teacherStudioText.includes('sign out') && teacherStudioText.includes('teacher debarka');
+    const hasTeacherSession = page.url().includes('studio') && teacherStudioText.includes('sign out') && teacherStudioText.includes('teacher');
     console.log('   Teacher Session in Studio Verified:', hasTeacherSession);
     report.push({
       test: '4. Teacher Encrypted Login Flow',
       status: hasTeacherSession ? 'PASS' : 'FAIL',
-      details: 'Signed in as teacher debarka at /studio',
+      details: 'Signed in as teacher at /studio',
     });
 
   } catch (err) {

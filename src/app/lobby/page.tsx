@@ -29,7 +29,7 @@ export default async function CandidateLobbyPage() {
     candidate = await prisma.user.create({
       data: {
         email: "student@openhall.edu",
-        name: "student debarka",
+        name: "student candidate",
         role: "CANDIDATE",
       },
     });
