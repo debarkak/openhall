@@ -7,8 +7,8 @@
 }
 
 body {
-  background-color: #f8fafc;
-  color: #1e293b;
+  background-color: #d8dde4; /* Classic muted desktop gray - reduces glare & AI aesthetic */
+  color: #0f172a;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
@@ -21,20 +21,174 @@ body {
   user-select: none;
 }
 
-/* Smooth custom scrollbars for question list & palette */
+/* Classic Old-Style 3D Bevel UI System */
+.retro-window {
+  background-color: #e2e8f0;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #ffffff #475569 #475569 #ffffff;
+  box-shadow: 2px 2px 0px rgba(15, 23, 42, 0.45);
+}
+
+.retro-panel {
+  background-color: #f1f5f9;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #ffffff #64748b #64748b #ffffff;
+  box-shadow: 1px 1px 0px rgba(15, 23, 42, 0.25);
+}
+
+.retro-sunken {
+  background-color: #ffffff;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #64748b #ffffff #ffffff #64748b;
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.retro-sunken-dark {
+  background-color: #0f172a;
+  color: #38bdf8;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #334155 #020617 #020617 #334155;
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.retro-titlebar {
+  background: linear-gradient(90deg, #1e3a5f 0%, #2b5b84 100%);
+  color: #ffffff;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+
+.retro-btn {
+  background-color: #e2e8f0;
+  color: #0f172a;
+  font-weight: 700;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #ffffff #334155 #334155 #ffffff;
+  box-shadow: 1px 1px 0px #0f172a;
+  user-select: none;
+  cursor: pointer;
+  transition: all 0.05s ease;
+}
+
+.retro-btn:active:not(:disabled) {
+  border-color: #334155 #ffffff #ffffff #334155;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.35);
+  transform: translate(1px, 1px);
+}
+
+.retro-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-color: #cbd5e1 #94a3b8 #94a3b8 #cbd5e1;
+  box-shadow: none;
+}
+
+.retro-btn-green {
+  background-color: #15803d;
+  color: #ffffff;
+  font-weight: 700;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #86efac #14532d #14532d #86efac;
+  box-shadow: 1px 1px 0px #052e16;
+  user-select: none;
+  cursor: pointer;
+  transition: all 0.05s ease;
+}
+
+.retro-btn-green:hover:not(:disabled) {
+  background-color: #166534;
+}
+
+.retro-btn-green:active:not(:disabled) {
+  border-color: #14532d #86efac #86efac #14532d;
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.45);
+  transform: translate(1px, 1px);
+}
+
+.retro-btn-orange {
+  background-color: #c2410c;
+  color: #ffffff;
+  font-weight: 700;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #fdba74 #7c2d12 #7c2d12 #fdba74;
+  box-shadow: 1px 1px 0px #431407;
+  user-select: none;
+  cursor: pointer;
+  transition: all 0.05s ease;
+}
+
+.retro-btn-orange:hover:not(:disabled) {
+  background-color: #9a3412;
+}
+
+.retro-btn-orange:active:not(:disabled) {
+  border-color: #7c2d12 #fdba74 #fdba74 #7c2d12;
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.45);
+  transform: translate(1px, 1px);
+}
+
+.retro-btn-cyan {
+  background-color: #0369a1;
+  color: #ffffff;
+  font-weight: 700;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #7dd3fc #075985 #075985 #7dd3fc;
+  box-shadow: 1px 1px 0px #082f49;
+  user-select: none;
+  cursor: pointer;
+  transition: all 0.05s ease;
+}
+
+.retro-btn-cyan:hover:not(:disabled) {
+  background-color: #075985;
+}
+
+.retro-btn-cyan:active:not(:disabled) {
+  border-color: #075985 #7dd3fc #7dd3fc #075985;
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.45);
+  transform: translate(1px, 1px);
+}
+
+.retro-field {
+  background-color: #ffffff;
+  border-style: solid;
+  border-width: 2px;
+  border-color: #64748b #ffffff #ffffff #64748b;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.2);
+  color: #0f172a;
+}
+
+.retro-field:focus {
+  outline: 2px solid #0284c7;
+}
+
+/* Custom scrollbars with classic tactile feel */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 12px;
+  height: 12px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #cbd5e1;
+  border: 1px solid #94a3b8;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
+  background: #e2e8f0;
+  border: 2px solid;
+  border-color: #ffffff #475569 #475569 #ffffff;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #f1f5f9;
 }
 
 /* KaTeX custom sizing tweaks */
