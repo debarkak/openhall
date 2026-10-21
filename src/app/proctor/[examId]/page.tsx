@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   Users,
@@ -17,106 +18,208 @@ interface LiveCandidate {
   currentQuestion?: string;
   violationsCount: number;
   lastEvent?: string;
+  lastActivityAt: string;
   score?: number;
 }
 
-export default function LiveProctorCockpitPage({
-  params,
-}: {
-  params: { examId: string };
-}) {
+interface TelemetryLog {
+  id: string;
+  timestamp: string;
+  time: string;
+  message: string;
+  type: string;
+}
+
+function mergeCandidates(
+  current: LiveCandidate[],
+  incoming: LiveCandidate[]
+): LiveCandidate[] {
+  const bySession = new Map(incoming.map((candidate) => [candidate.sessionId, candidate]));
+
+  for (const candidate of current) {
+    const snapshot = bySession.get(candidate.sessionId);
+    if (!snapshot || candidate.lastActivityAt > snapshot.lastActivityAt) {
+      bySession.set(candidate.sessionId, candidate);
+    }
+  }
+
+  return Array.from(bySession.values()).sort((a, b) =>
+    b.lastActivityAt.localeCompare(a.lastActivityAt)
+  );
+}
+
+function mergeTelemetryLogs(current: TelemetryLog[], incoming: TelemetryLog[]): TelemetryLog[] {
+  const byId = new Map(incoming.map((log) => [log.id, log]));
+  for (const log of current) {
+    if (!byId.has(log.id)) byId.set(log.id, log);
+  }
+  return Array.from(byId.values())
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+    .slice(0, 50);
+}
+
+export default function LiveProctorCockpitPage() {
+  const params = useParams<{ examId: string }>();
   const examId = params.examId;
-  const [candidates, setCandidates] = useState<LiveCandidate[]>([
-    {
-      sessionId: "session_demo_1",
-      name: "candidate 01",
-      status: "IN_PROGRESS",
-      currentQuestion: "q1",
-      violationsCount: 0,
-      lastEvent: "connected to session",
-    },
-  ]);
-  const [telemetryLogs, setTelemetryLogs] = useState<
-    { time: string; message: string; type: string }[]
-  >([]);
+  const [candidates, setCandidates] = useState<LiveCandidate[]>([]);
+  const [telemetryLogs, setTelemetryLogs] = useState<TelemetryLog[]>([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Connect to Server-Sent Events stream
+    let disposed = false;
+
+    const loadSnapshot = async () => {
+      try {
+        const res = await fetch(`/api/admin/exams/${examId}/proctor`);
+        if (res.status === 401) {
+          const destination = `${window.location.pathname}${window.location.search}`;
+          window.location.assign(`/login?redirect=${encodeURIComponent(destination)}`);
+          return;
+        }
+        if (res.status === 403) {
+          window.location.assign("/lobby");
+          return;
+        }
+        if (!res.ok) throw new Error("failed to load proctor snapshot");
+
+        const snapshot: {
+          candidates: LiveCandidate[];
+          logs: { id: string; timestamp: string; candidateName: string; eventType: string }[];
+        } = await res.json();
+        if (disposed) return;
+
+        setCandidates((current) => mergeCandidates(current, snapshot.candidates));
+        const snapshotLogs = snapshot.logs.map((log) => ({
+          id: log.id,
+          timestamp: log.timestamp,
+          time: new Date(log.timestamp).toLocaleTimeString(),
+          message: `[alert] ${log.candidateName.toLowerCase()} triggered ${log.eventType.toLowerCase()}`,
+          type: "VIOLATION",
+        }));
+        setTelemetryLogs((current) => mergeTelemetryLogs(current, snapshotLogs));
+        setSnapshotError(null);
+      } catch {
+        if (!disposed) setSnapshotError("could not load recent candidate activity");
+      }
+    };
+
+    const updateCandidate = (
+      sessionId: string,
+      patch: Partial<LiveCandidate> & {
+        candidateName?: string;
+        timestamp?: string;
+        violationIncrement?: number;
+      }
+    ) => {
+      const timestamp = patch.timestamp || new Date().toISOString();
+      setCandidates((current) => {
+        const existing = current.find((candidate) => candidate.sessionId === sessionId);
+        return mergeCandidates(current, [{
+          sessionId,
+          name: patch.candidateName || patch.name || existing?.name || "candidate",
+          status: patch.status || existing?.status || "IN_PROGRESS",
+          currentQuestion: patch.currentQuestion ?? existing?.currentQuestion,
+          violationsCount: patch.violationIncrement
+            ? (existing?.violationsCount || 0) + patch.violationIncrement
+            : patch.violationsCount ?? existing?.violationsCount ?? 0,
+          lastEvent: patch.lastEvent ?? existing?.lastEvent,
+          lastActivityAt: timestamp,
+          score: patch.score ?? existing?.score,
+        }]);
+      });
+    };
+
+    const addLog = (log: TelemetryLog) => {
+      setTelemetryLogs((current) => mergeTelemetryLogs(current, [log]));
+    };
+
+    void loadSnapshot();
+
+    // Subscribe before loading the snapshot so live events during the fetch are retained.
     const eventSource = new EventSource(`/api/proctor/${examId}/stream`);
 
     eventSource.onopen = () => {
       setIsConnected(true);
-      setTelemetryLogs((prev) => [
-        {
-          time: new Date().toLocaleTimeString(),
-          message: "proctor connected to live telemetry stream",
-          type: "INFO",
-        },
-        ...prev,
-      ]);
+      const timestamp = new Date().toISOString();
+      addLog({
+        id: `connected-${timestamp}`,
+        timestamp,
+        time: new Date(timestamp).toLocaleTimeString(),
+        message: "proctor connected to live telemetry stream",
+        type: "INFO",
+      });
+      void loadSnapshot();
     };
 
     eventSource.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
-        const time = new Date().toLocaleTimeString();
+        if (!data.sessionId) return;
+        const timestamp = data.timestamp || new Date().toISOString();
+        const time = new Date(timestamp).toLocaleTimeString();
 
-        if (data.type === "CANDIDATE_ATTEMPT") {
-          setCandidates((prev) =>
-            prev.map((c) =>
-              c.sessionId === data.sessionId
-                ? {
-                    ...c,
-                    currentQuestion: `saved item`,
-                    lastEvent: `saved answer for ${data.questionId}`,
-                  }
-                : c
-            )
-          );
+        if (data.type === "CANDIDATE_ENROLLED") {
+          updateCandidate(data.sessionId, {
+            candidateName: data.candidateName,
+            status: data.status || "IN_PROGRESS",
+            lastEvent: "joined the exam",
+            timestamp,
+          });
+        } else if (data.type === "CANDIDATE_ATTEMPT") {
+          updateCandidate(data.sessionId, {
+            candidateName: data.candidateName,
+            currentQuestion: data.currentQuestion,
+            lastEvent: `saved answer for ${data.currentQuestion || data.questionId}`,
+            timestamp,
+          });
         } else if (data.type === "VIOLATION_EVENT") {
-          setCandidates((prev) =>
-            prev.map((c) =>
-              c.sessionId === data.sessionId
-                ? {
-                    ...c,
-                    violationsCount: c.violationsCount + 1,
-                    lastEvent: `integrity alert: ${data.eventType.toLowerCase()}`,
-                  }
-                : c
-            )
-          );
+          updateCandidate(data.sessionId, {
+            candidateName: data.candidateName,
+            violationIncrement: 1,
+            lastEvent: `integrity alert: ${data.eventType.toLowerCase()}`,
+            timestamp,
+          });
 
-          setTelemetryLogs((prev) => [
-            {
-              time,
-              message: `[alert] ${(data.candidateName || "candidate").toLowerCase()} triggered ${data.eventType.toLowerCase()}`,
-              type: "VIOLATION",
-            },
-            ...prev,
-          ]);
+          addLog({
+            id: data.logId || `violation-${data.sessionId}-${timestamp}`,
+            timestamp,
+            time,
+            message: `[alert] ${(data.candidateName || "candidate").toLowerCase()} triggered ${data.eventType.toLowerCase()}`,
+            type: "VIOLATION",
+          });
         } else if (data.type === "CANDIDATE_SUBMITTED") {
-          setCandidates((prev) =>
-            prev.map((c) =>
-              c.sessionId === data.sessionId
-                ? {
-                    ...c,
-                    status: "SUBMITTED",
-                    score: data.finalScore,
-                    lastEvent: `finalized exam (score: ${data.finalScore}/${data.maxMarks})`,
-                  }
-                : c
-            )
-          );
+          updateCandidate(data.sessionId, {
+            candidateName: data.candidateName,
+            status: "EVALUATED",
+            score: data.finalScore,
+            lastEvent: `finalized exam (score: ${data.finalScore}/${data.maxMarks})`,
+            timestamp,
+          });
 
-          setTelemetryLogs((prev) => [
-            {
-              time,
-              message: `[submission] ${(data.candidateName || "candidate").toLowerCase()} completed examination with ${data.finalScore} marks`,
-              type: "SUBMIT",
-            },
-            ...prev,
-          ]);
+          addLog({
+            id: `submission-${data.sessionId}-${timestamp}`,
+            timestamp,
+            time,
+            message: `[submission] ${(data.candidateName || "candidate").toLowerCase()} completed examination with ${data.finalScore} marks`,
+            type: "SUBMIT",
+          });
+        } else if (data.type === "CANDIDATE_DISQUALIFIED") {
+          updateCandidate(data.sessionId, {
+            candidateName: data.candidateName,
+            status: "DISQUALIFIED",
+            score: 0,
+            lastEvent: "candidate disqualified",
+            timestamp,
+          });
+
+          addLog({
+            id: `disqualified-${data.sessionId}-${timestamp}`,
+            timestamp,
+            time,
+            message: `[disqualification] ${(data.candidateName || "candidate").toLowerCase()} was disqualified`,
+            type: "DISQUALIFIED",
+          });
         }
       } catch {
         // Ping or non-JSON chunk
@@ -128,6 +231,7 @@ export default function LiveProctorCockpitPage({
     };
 
     return () => {
+      disposed = true;
       eventSource.close();
     };
   }, [examId]);
@@ -171,7 +275,7 @@ export default function LiveProctorCockpitPage({
           <div className="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-300">
             <h2 className="text-xs font-black tracking-wider text-slate-800 flex items-center gap-1.5">
               <Users className="h-3.5 w-3.5 text-emerald-800" />
-              active candidate sessions ({candidates.length})
+              candidate sessions ({candidates.length})
             </h2>
           </div>
 
@@ -183,10 +287,16 @@ export default function LiveProctorCockpitPage({
                   <th className="py-2.5 px-3">status</th>
                   <th className="py-2.5 px-3">activity</th>
                   <th className="py-2.5 px-3">violations</th>
-                  <th className="py-2.5 px-3 text-right">actions</th>
                 </tr>
               </thead>
               <tbody>
+                {candidates.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 px-3 text-center text-slate-500">
+                      {snapshotError || "no candidate sessions for this exam yet"}
+                    </td>
+                  </tr>
+                )}
                 {candidates.map((c) => (
                   <tr
                     key={c.sessionId}
@@ -201,7 +311,9 @@ export default function LiveProctorCockpitPage({
                     <td className="py-2 px-3">
                       <span
                         className={`inline-block border px-1.5 py-0.5 text-[10px] font-bold ${
-                          c.status === "SUBMITTED"
+                          c.status === "DISQUALIFIED"
+                            ? "bg-red-100 text-red-900 border-red-400"
+                            : c.status === "SUBMITTED" || c.status === "EVALUATED"
                             ? "bg-slate-100 text-slate-700 border-slate-300"
                             : "bg-emerald-100 text-emerald-900 border-emerald-400"
                         }`}
@@ -221,22 +333,6 @@ export default function LiveProctorCockpitPage({
                       ) : (
                         <span className="text-slate-500 text-[11px] font-semibold">clean</span>
                       )}
-                    </td>
-                    <td className="py-2 px-3 text-right space-x-1.5">
-                      <button
-                        type="button"
-                        onClick={() => alert(`sent warning message to ${c.name}`)}
-                        className="retro-btn px-2 py-0.5 text-[11px]"
-                      >
-                        warn
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => alert(`added +5 minutes to session deadline`)}
-                        className="retro-btn-cyan px-2 py-0.5 text-[11px]"
-                      >
-                        +5m
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -260,12 +356,14 @@ export default function LiveProctorCockpitPage({
                 awaiting telemetry events...
               </div>
             ) : (
-              telemetryLogs.map((log, i) => (
+              telemetryLogs.map((log) => (
                 <div
-                  key={i}
+                  key={log.id}
                   className={`p-2 border ${
                     log.type === "VIOLATION"
                       ? "border-red-500 bg-red-950 text-red-300 font-bold"
+                      : log.type === "DISQUALIFIED"
+                      ? "border-red-600 bg-red-950 text-red-200 font-bold"
                       : log.type === "SUBMIT"
                       ? "border-emerald-500 bg-emerald-950 text-emerald-300 font-bold"
                       : "border-slate-700 bg-slate-900 text-slate-300"
