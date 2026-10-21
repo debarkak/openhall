@@ -3,15 +3,11 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  ShieldAlert,
   ArrowLeft,
   Users,
-  Clock,
-  CheckCircle2,
   AlertTriangle,
   Radio,
-  Send,
-  UserX,
+  Shield,
 } from "lucide-react";
 
 interface LiveCandidate {
@@ -137,107 +133,107 @@ export default function LiveProctorCockpitPage({
   }, [examId]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen flex flex-col pb-8">
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-6 shadow-xs">
+      <header className="retro-titlebar sticky top-0 z-30 h-12 shadow-sm">
         <div className="flex items-center gap-3">
           <Link
             href="/studio"
-            className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            className="retro-btn px-2.5 py-1 text-[11px] font-bold text-slate-900 inline-flex items-center gap-1 hover:bg-slate-100"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
+            <ArrowLeft className="h-3 w-3" />
             Studio
           </Link>
           <div className="flex items-center gap-2">
-            <h1 className="text-base font-extrabold text-slate-900 tracking-tight">
-              Live Proctoring Cockpit
+            <Shield className="h-4 w-4 text-sky-200" />
+            <h1 className="text-xs sm:text-sm font-black text-white uppercase tracking-tight">
+              Live Proctor Cockpit
             </h1>
-            <div className="flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  isConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"
-                }`}
-              />
-              {isConnected ? "SSE Stream Active" : "Reconnecting"}
-            </div>
+            <span
+              className={`retro-btn px-2 py-0.5 text-[10px] font-bold ${
+                isConnected ? "bg-emerald-100 text-emerald-950" : "bg-red-100 text-red-950"
+              }`}
+            >
+              {isConnected ? "● SSE STREAM ACTIVE" : "○ DISCONNECTED"}
+            </span>
           </div>
         </div>
 
-        <div className="text-xs text-slate-500 font-mono">
-          Exam Session Monitor: <strong className="text-slate-800">{examId}</strong>
+        <div className="text-[11px] text-slate-200 font-mono">
+          EXAM ID: <strong className="text-white">{examId}</strong>
         </div>
       </header>
 
       {/* Main Cockpit Body */}
-      <main className="mx-auto max-w-7xl w-full p-6 flex-1 flex flex-col lg:flex-row gap-6">
+      <main className="mx-auto max-w-7xl w-full p-4 flex-1 flex flex-col lg:flex-row gap-4">
         {/* Left: Candidate Roster Table */}
-        <div className="flex-1 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-              <Users className="h-4 w-4 text-brand-green" />
-              Active Candidates ({candidates.length})
+        <div className="retro-window flex-1 p-4 flex flex-col">
+          <div className="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-300">
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5 text-emerald-800" />
+              Active Candidate Sessions ({candidates.length})
             </h2>
           </div>
 
-          <div className="mt-4 overflow-x-auto flex-1">
-            <table className="w-full text-left border-collapse text-xs sm:text-sm">
+          <div className="retro-sunken bg-white overflow-x-auto flex-1">
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-400 font-semibold uppercase text-[11px]">
-                  <th className="py-3 px-3">Candidate</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3">Activity</th>
-                  <th className="py-3 px-3">Violations</th>
-                  <th className="py-3 px-3 text-right">Actions</th>
+                <tr className="bg-slate-200 border-b-2 border-slate-300 text-slate-700 font-bold uppercase text-[10px]">
+                  <th className="py-2.5 px-3">Candidate</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3">Activity</th>
+                  <th className="py-2.5 px-3">Violations</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {candidates.map((c) => (
                   <tr
                     key={c.sessionId}
-                    className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
+                    className="border-b border-slate-200 last:border-0 hover:bg-slate-50"
                   >
-                    <td className="py-3 px-3 font-bold text-slate-800">
+                    <td className="py-2 px-3 font-bold text-slate-900">
                       {c.name}
-                      <span className="block text-[11px] font-mono text-slate-400 font-normal">
+                      <span className="block text-[10px] font-mono text-slate-500 font-normal">
                         {c.sessionId}
                       </span>
                     </td>
-                    <td className="py-3 px-3">
+                    <td className="py-2 px-3">
                       <span
-                        className={`inline-block rounded px-2 py-0.5 text-[11px] font-bold ${
+                        className={`inline-block border px-1.5 py-0.5 text-[10px] font-bold ${
                           c.status === "SUBMITTED"
-                            ? "bg-slate-100 text-slate-700"
-                            : "bg-emerald-100 text-emerald-800"
+                            ? "bg-slate-100 text-slate-700 border-slate-300"
+                            : "bg-emerald-100 text-emerald-900 border-emerald-400"
                         }`}
                       >
                         {c.status}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-slate-600 max-w-xs truncate">
+                    <td className="py-2 px-3 text-slate-700 max-w-xs truncate">
                       {c.lastEvent}
                     </td>
-                    <td className="py-3 px-3">
+                    <td className="py-2 px-3">
                       {c.violationsCount > 0 ? (
-                        <span className="inline-flex items-center gap-1 rounded bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
-                          <AlertTriangle className="h-3 w-3" />
+                        <span className="retro-btn bg-red-100 text-red-950 px-1.5 py-0.5 text-[10px] font-black inline-flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3 text-red-700" />
                           {c.violationsCount} Alert{c.violationsCount > 1 ? "s" : ""}
                         </span>
                       ) : (
-                        <span className="text-slate-400 text-xs">Clean</span>
+                        <span className="text-slate-500 text-[11px] font-semibold">Clean</span>
                       )}
                     </td>
-                    <td className="py-3 px-3 text-right space-x-2">
+                    <td className="py-2 px-3 text-right space-x-1.5">
                       <button
                         type="button"
                         onClick={() => alert(`Sent warning message to ${c.name}`)}
-                        className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                        className="retro-btn px-2 py-0.5 text-[11px]"
                       >
                         Warn
                       </button>
                       <button
                         type="button"
                         onClick={() => alert(`Added +5 minutes to session deadline`)}
-                        className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-brand-cyan hover:bg-cyan-50 transition"
+                        className="retro-btn-cyan px-2 py-0.5 text-[11px]"
                       >
                         +5m
                       </button>
@@ -250,36 +246,36 @@ export default function LiveProctorCockpitPage({
         </div>
 
         {/* Right: Telemetry Audit Stream Log */}
-        <div className="w-full lg:w-96 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col shrink-0">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-              <Radio className="h-4 w-4 text-brand-orange" />
-              Live Telemetry Feed
+        <div className="retro-window w-full lg:w-96 p-4 flex flex-col shrink-0">
+          <div className="flex items-center justify-between pb-2 mb-3 border-b-2 border-slate-300">
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+              <Radio className="h-3.5 w-3.5 text-amber-700" />
+              Live Telemetry Stream
             </h2>
           </div>
 
-          <div className="mt-4 flex-1 space-y-2.5 overflow-y-auto max-h-[60vh] font-mono text-xs">
+          <div className="retro-sunken-dark flex-1 p-3 space-y-2 overflow-y-auto max-h-[60vh] font-mono text-xs">
             {telemetryLogs.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 font-sans">
+              <div className="py-8 text-center text-slate-500 font-sans">
                 Awaiting telemetry events...
               </div>
             ) : (
               telemetryLogs.map((log, i) => (
                 <div
                   key={i}
-                  className={`p-2.5 rounded-lg border ${
+                  className={`p-2 border ${
                     log.type === "VIOLATION"
-                      ? "border-red-200 bg-red-50/60 text-red-800"
+                      ? "border-red-500 bg-red-950 text-red-300 font-bold"
                       : log.type === "SUBMIT"
-                      ? "border-emerald-200 bg-emerald-50/60 text-emerald-800 font-bold"
-                      : "border-slate-200 bg-slate-50 text-slate-600"
+                      ? "border-emerald-500 bg-emerald-950 text-emerald-300 font-bold"
+                      : "border-slate-700 bg-slate-900 text-slate-300"
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 mb-0.5">
                     <span>{log.type}</span>
                     <span>{log.time}</span>
                   </div>
-                  <div>{log.message}</div>
+                  <div className="leading-tight">{log.message}</div>
                 </div>
               ))
             )}
