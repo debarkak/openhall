@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { authorizeCandidate } from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +9,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const candidateAccess = await authorizeCandidate();
+    if (!candidateAccess.ok) return candidateAccess.response;
+
     const examId = params.id;
 
     const exam = await prisma.exam.findUnique({
@@ -19,37 +22,11 @@ export async function POST(
       return NextResponse.json({ error: "Exam not found" }, { status: 404 });
     }
 
-    // Check if authenticated session user exists
-    const sessionUser = await getCurrentUser();
-    let candidate = null;
-
-    if (sessionUser) {
-      candidate = await prisma.user.findUnique({
-        where: { id: sessionUser.id },
-      });
-    }
-
-    if (!candidate) {
-      candidate = await prisma.user.findFirst({
-        where: { role: "CANDIDATE" },
-      });
-    }
-
-    if (!candidate) {
-      candidate = await prisma.user.create({
-        data: {
-          email: "student@openhall.edu",
-          name: "student candidate",
-          role: "CANDIDATE",
-        },
-      });
-    }
-
     // Check if session already exists
     let session = await prisma.examSession.findFirst({
       where: {
         examId,
-        candidateId: candidate.id,
+        candidateId: candidateAccess.userId,
       },
     });
 
@@ -57,7 +34,7 @@ export async function POST(
       session = await prisma.examSession.create({
         data: {
           examId,
-          candidateId: candidate.id,
+          candidateId: candidateAccess.userId,
           status: "IN_PROGRESS",
           startedAt: new Date(),
           deadline: new Date(Date.now() + exam.durationSeconds * 1000),

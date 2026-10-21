@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { CandidateExamManifest, ItemStatus } from "@/lib/types";
+import { authorizeCandidateSession } from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const candidateAccess = await authorizeCandidateSession(params.id);
+    if (!candidateAccess.ok) return candidateAccess.response;
+
     const sessionId = params.id;
 
     const session = await prisma.examSession.findUnique({

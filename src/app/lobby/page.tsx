@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { Play, RotateCcw, Lock, GraduationCap, FileText, Info } from "lucide-react";
@@ -11,28 +12,20 @@ export const dynamic = "force-dynamic";
 export default async function CandidateLobbyPage() {
   const sessionUser = await getCurrentUser();
 
-  // Find candidate by session user or fallback
-  let candidate = null;
-  if (sessionUser) {
-    candidate = await prisma.user.findUnique({
-      where: { id: sessionUser.id },
-    });
+  if (!sessionUser) {
+    redirect("/login?redirect=%2Flobby");
   }
 
-  if (!candidate) {
-    candidate = await prisma.user.findFirst({
-      where: { role: "CANDIDATE" },
-    });
-  }
+  const candidate = await prisma.user.findUnique({
+    where: { id: sessionUser.id },
+  });
 
   if (!candidate) {
-    candidate = await prisma.user.create({
-      data: {
-        email: "student@openhall.edu",
-        name: "student candidate",
-        role: "CANDIDATE",
-      },
-    });
+    redirect("/login?redirect=%2Flobby");
+  }
+
+  if (candidate.role !== "CANDIDATE") {
+    redirect(candidate.role === "TEACHER" || candidate.role === "ADMIN" ? "/studio" : "/login");
   }
 
   // Fetch all real examinations from the database

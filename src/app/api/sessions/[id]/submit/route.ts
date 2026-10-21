@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { evaluateSession } from "@/lib/evaluation";
 import { broadcastProctorEvent } from "@/lib/proctorBroadcast";
+import { authorizeCandidateSession } from "@/lib/authorization";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const candidateAccess = await authorizeCandidateSession(params.id);
+    if (!candidateAccess.ok) return candidateAccess.response;
+
     const sessionId = params.id;
 
     const session = await prisma.examSession.findUnique({
