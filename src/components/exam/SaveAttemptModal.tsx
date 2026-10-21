@@ -20,14 +20,13 @@ export const SaveAttemptModal: React.FC<SaveAttemptModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-      {/* Classic 3D Modal Window */}
-      <div className="retro-window w-full max-w-md overflow-hidden">
+      <div className="retro-window w-full max-w-sm overflow-hidden">
         {/* Title Bar */}
         <div className="retro-titlebar">
-          <div className="flex items-center gap-2">
-            <HelpCircle className="h-4 w-4 text-sky-200" />
-            <span className="text-xs font-bold uppercase tracking-wider">
-              Save Attempt Confirmation
+          <div className="flex items-center gap-1.5">
+            <HelpCircle className="h-3.5 w-3.5 text-sky-200" />
+            <span className="text-xs font-bold tracking-wide">
+              Unsaved Answer
             </span>
           </div>
           <button
@@ -41,28 +40,26 @@ export const SaveAttemptModal: React.FC<SaveAttemptModalProps> = ({
         </div>
 
         {/* Modal Description */}
-        <div className="p-4 sm:p-5">
-          <div className="retro-sunken bg-white p-4 text-xs sm:text-sm text-slate-800 leading-relaxed mb-4">
-            Do you want to save this question&apos;s selected option? Use{" "}
-            <strong className="text-emerald-800">[Save & Next]</strong> at
-            the bottom bar to record answers without triggering this guardrail prompt.
+        <div className="p-4">
+          <div className="retro-sunken bg-white p-3.5 text-xs text-slate-700 leading-relaxed mb-4">
+            You picked an option on this question. Do you want to save it before jumping to another question?
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2.5">
+          <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onCancel}
-              className="retro-btn min-w-[80px] py-1.5 text-xs font-bold"
+              className="retro-btn min-w-[75px] py-1 text-xs font-bold"
             >
-              Discard (No)
+              Don&apos;t Save
             </button>
             <button
               type="button"
               onClick={onConfirm}
-              className="retro-btn-green min-w-[80px] py-1.5 text-xs font-bold"
+              className="retro-btn-green min-w-[75px] py-1 text-xs font-bold"
             >
-              Save (Yes)
+              Save &amp; Jump
             </button>
           </div>
         </div>
