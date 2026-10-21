@@ -18,7 +18,7 @@ async function main() {
   });
 
   // 2. Create Candidate
-  const candidate = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "student@openhall.internal" },
     update: {},
     create: {
@@ -48,11 +48,17 @@ async function main() {
     },
   });
 
-  // Delete existing attempts and questions to cleanly reseed
-  await prisma.questionAttempt.deleteMany({});
-  await prisma.proctorLog.deleteMany({});
-  await prisma.option.deleteMany({});
-  await prisma.question.deleteMany({});
+  // Never rewrite a baseline exam after candidates have enrolled. Rebuilding
+  // question rows would invalidate attempts and change the meaning of results.
+  const existingSessions = await prisma.examSession.count({ where: { examId: exam.id } });
+  if (existingSessions > 0) {
+    throw new Error(
+      `Refusing to reseed ${exam.accessCode}: it has ${existingSessions} candidate session(s).`
+    );
+  }
+
+  // Re-running the seed is safe for an unused baseline exam and does not touch
+  // sessions, attempts, telemetry, or records belonging to other exams.
   await prisma.section.deleteMany({ where: { examId: exam.id } });
 
   // SECTION 1: Mental Ability Test (MAT) - 20 questions
@@ -480,29 +486,8 @@ async function main() {
     }
   }
 
-  // 4. Create an active candidate ExamSession for testing
-  const now = new Date();
-  const deadline = new Date(now.getTime() + 5400 * 1000); // 90 min from now
-
-  await prisma.examSession.upsert({
-    where: { id: "session_demo_1" },
-    update: {
-      status: "IN_PROGRESS",
-      startedAt: now,
-      deadline: deadline,
-    },
-    create: {
-      id: "session_demo_1",
-      examId: exam.id,
-      candidateId: candidate.id,
-      status: "IN_PROGRESS",
-      startedAt: now,
-      deadline: deadline,
-    },
-  });
-
   console.log("Seeding successfully completed! 45 questions created across 3 sections.");
-  console.log("Demo session created: 'session_demo_1' (Access Code: 'OH-MOCK-09')");
+  console.log("No candidate session was created; candidates will enroll through the lobby.");
 }
 
 main()
