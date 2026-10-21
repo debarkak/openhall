@@ -7,13 +7,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const candidateAccess = await authorizeCandidateSession(params.id);
+    const candidateAccess = await authorizeCandidateSession((await params).id);
     if (!candidateAccess.ok) return candidateAccess.response;
 
-    const sessionId = params.id;
+    const sessionId = (await params).id;
 
     const session = await prisma.examSession.findUnique({
       where: { id: sessionId },
@@ -46,11 +46,18 @@ export async function GET(
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    const evalResult = evaluateSession(
+    if (!["SUBMITTED", "EVALUATED", "DISQUALIFIED"].includes(session.status)) {
+      return NextResponse.json({ error: "Results are available after the exam is submitted." }, { status: 403 });
+    }
+
+    const evaluation = evaluateSession(
       session.exam,
       session.attempts,
       session.candidate.name
     );
+    const evalResult = session.status === "DISQUALIFIED"
+      ? { ...evaluation, finalScore: 0 }
+      : evaluation;
 
     return NextResponse.json(evalResult);
   } catch (error) {

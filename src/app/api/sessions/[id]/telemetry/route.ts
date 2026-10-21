@@ -7,30 +7,44 @@ export const dynamic = "force-dynamic";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const candidateAccess = await authorizeCandidateSession(params.id);
+    const candidateAccess = await authorizeCandidateSession((await params).id);
     if (!candidateAccess.ok) return candidateAccess.response;
 
-    const sessionId = params.id;
+    const sessionId = (await params).id;
     const body = await request.json();
-    const { eventType, timestamp, metadata } = body;
+    const { eventType, metadata } = body;
+    const allowedEventTypes = new Set([
+      "FULLSCREEN_EXIT",
+      "TAB_SWITCH",
+      "DEVTOOLS_KEY",
+      "MULTIPLE_DISPLAYS",
+    ]);
+
+    if (typeof eventType !== "string" || !allowedEventTypes.has(eventType)) {
+      return NextResponse.json({ error: "Invalid telemetry event type." }, { status: 400 });
+    }
 
     const session = await prisma.examSession.findUnique({
       where: { id: sessionId },
-      select: { id: true, examId: true, candidate: { select: { name: true } } },
+      select: { id: true, examId: true, status: true, candidate: { select: { name: true } } },
     });
 
     if (!session) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
+    if (session.status !== "IN_PROGRESS") {
+      return NextResponse.json({ error: "Exam session is no longer active." }, { status: 403 });
+    }
+
     const log = await prisma.proctorLog.create({
       data: {
         sessionId,
         eventType,
-        timestamp: timestamp ? new Date(timestamp) : new Date(),
+        timestamp: new Date(),
         metadata: metadata ? JSON.stringify(metadata) : null,
       },
     });
@@ -38,6 +52,7 @@ export async function POST(
     broadcastProctorEvent(session.examId, {
       type: "VIOLATION_EVENT",
       sessionId,
+      logId: log.id,
       candidateName: session.candidate.name,
       eventType,
       metadata,
