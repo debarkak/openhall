@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
+    "start": "node scripts/start-standalone.mjs",
+    "lint": "eslint src scripts prisma --ext .js,.mjs,.ts,.tsx",
+    "test:security": "node scripts/verify_security_flows.mjs",
     "seed": "tsx prisma/seed.ts",
     "test:e2e": "node scripts/test_browser.mjs"
   },

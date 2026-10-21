@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { KaTeXRenderer } from "@/components/katex/KaTeXRenderer";
 import {
   ArrowLeft,
@@ -19,8 +20,6 @@ import {
   Sparkles,
   Copy,
   Image as ImageIcon,
-  Sliders,
-  HelpCircle,
 } from "lucide-react";
 
 interface OptionItem {
@@ -82,11 +81,8 @@ function getSubjectEmoji(title: string): string {
   return "📁";
 }
 
-export default function QuestionComposerPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function QuestionComposerPage() {
+  const params = useParams<{ id: string }>();
   const examId = params.id;
   const [exam, setExam] = useState<ExamDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,7 +126,7 @@ export default function QuestionComposerPage({
   const stemInputRef = useRef<HTMLTextAreaElement | null>(null);
   const stemSelectionRef = useRef({ start: 0, end: 0 });
 
-  const loadExamDetail = async (preserveSectionId?: string) => {
+  const loadExamDetail = useCallback(async (preserveSectionId?: string) => {
     try {
       const res = await fetch(`/api/admin/exams/${examId}`);
       if (res.status === 401) {
@@ -146,7 +142,7 @@ export default function QuestionComposerPage({
         const data: ExamDetail = await res.json();
         setExam(data);
 
-        const targetSecId = preserveSectionId || selectedSectionId || (data.sections.length > 0 ? data.sections[0].id : "");
+        const targetSecId = preserveSectionId || (data.sections.length > 0 ? data.sections[0].id : "");
         setSelectedSectionId(targetSecId);
       }
     } catch (err) {
@@ -154,11 +150,11 @@ export default function QuestionComposerPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [examId]);
 
   useEffect(() => {
-    loadExamDetail();
-  }, [examId]);
+    void loadExamDetail();
+  }, [loadExamDetail]);
 
   const loadQuestionIntoForm = (q: QuestionItem, secId: string) => {
     setSelectedSectionId(secId);
@@ -345,7 +341,7 @@ export default function QuestionComposerPage({
     }
   };
 
-  const handleSaveQuestion = async (e: React.FormEvent, andAddAnother = false) => {
+  const handleSaveQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback(null);
 
@@ -446,7 +442,6 @@ export default function QuestionComposerPage({
   }
 
   const activeSection = exam.sections.find((s) => s.id === selectedSectionId) || exam.sections[0];
-  const activeEmoji = activeSection ? getSubjectEmoji(activeSection.title) : "📁";
   const activeQuestions = activeSection?.questions || [];
   const currentQIndex = selectedQuestion
     ? activeQuestions.findIndex((q) => q.id === selectedQuestion.id) + 1
@@ -733,7 +728,9 @@ export default function QuestionComposerPage({
                     <div className="flex items-center gap-1">
                       <select
                         value={questionType}
-                        onChange={(e) => setQuestionType(e.target.value as any)}
+                        onChange={(e) => setQuestionType(
+                          e.target.value === "multiple_choice" ? "multiple_choice" : "single_choice"
+                        )}
                         className="retro-field text-xs font-bold py-1 px-2.5 bg-slate-50"
                       >
                         <option value="single_choice">🔘 multiple choice (single answer)</option>
