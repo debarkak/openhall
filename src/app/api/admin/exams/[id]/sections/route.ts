@@ -1,0 +1,37 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const examId = params.id;
+    const body = await request.json().catch(() => ({}));
+    const { title } = body;
+
+    const count = await prisma.section.count({
+      where: { examId },
+    });
+
+    const section = await prisma.section.create({
+      data: {
+        examId,
+        title: title && title.trim() ? title.trim() : `Section ${count + 1}`,
+        orderIndex: count,
+      },
+      include: {
+        questions: {
+          include: { options: true },
+        },
+      },
+    });
+
+    return NextResponse.json(section);
+  } catch (error) {
+    console.error("Section creation error:", error);
+    return NextResponse.json({ error: "Failed to create section" }, { status: 500 });
+  }
+}

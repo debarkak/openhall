@@ -31,6 +31,23 @@ export async function GET(
       return NextResponse.json({ error: "Exam not found" }, { status: 404 });
     }
 
+    // Auto-create default section if an exam has 0 sections
+    if (exam.sections.length === 0) {
+      const defaultSec = await prisma.section.create({
+        data: {
+          examId: exam.id,
+          title: "Section 1",
+          orderIndex: 0,
+        },
+        include: {
+          questions: {
+            include: { options: true },
+          },
+        },
+      });
+      exam.sections.push(defaultSec);
+    }
+
     return NextResponse.json(exam);
   } catch (error) {
     console.error("Exam detail fetch error:", error);

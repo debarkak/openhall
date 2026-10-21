@@ -53,6 +53,17 @@ export async function POST(request: NextRequest) {
         accessCode: accessCode || `OH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
         hostId: host.id,
         isLive: true,
+        sections: {
+          create: [
+            {
+              title: "Section 1",
+              orderIndex: 0,
+            },
+          ],
+        },
+      },
+      include: {
+        sections: true,
       },
     });
 
