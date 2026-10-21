@@ -10,9 +10,10 @@ services:
     ports:
       - '3000:3000'
     environment:
-      - DATABASE_URL=file:/app/prisma/openhall.db
-      - NODE_ENV=production
-      - PORT=3000
+      DATABASE_URL: file:/app/prisma/openhall.db
+      NODE_ENV: production
+      PORT: 3000
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env before starting OpenHall}
     volumes:
       - openhall_data:/app/prisma
     healthcheck:

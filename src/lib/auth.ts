@@ -3,8 +3,28 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 export const SESSION_COOKIE_NAME = "openhall_session";
-const SESSION_SECRET = process.env.SESSION_SECRET || "openhall-2005-retro-secret-salt-39824";
+const DEVELOPMENT_SESSION_SECRET = "openhall-development-only-session-secret";
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function getSessionSecret(): string {
+  const configuredSecret = process.env.SESSION_SECRET;
+
+  if (process.env.NODE_ENV === "production") {
+    if (!configuredSecret || Buffer.byteLength(configuredSecret, "utf8") < 32) {
+      throw new Error("SESSION_SECRET must be set to at least 32 characters in production.");
+    }
+
+    return configuredSecret;
+  }
+
+  return configuredSecret || DEVELOPMENT_SESSION_SECRET;
+}
+
+export function assertSessionSecretConfigured(): void {
+  if (process.env.NODE_ENV === "production") {
+    getSessionSecret();
+  }
+}
 
 export interface SessionUser {
   id: string;
@@ -58,7 +78,7 @@ export function createSessionToken(user: SessionUser): string {
   };
 
   const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const hmac = crypto.createHmac("sha256", SESSION_SECRET);
+  const hmac = crypto.createHmac("sha256", getSessionSecret());
   hmac.update(payloadBase64);
   const signature = hmac.digest("base64url");
 
@@ -75,7 +95,7 @@ export function verifySessionToken(token: string): SessionUser | null {
   if (!payloadBase64 || !providedSignature) return null;
 
   try {
-    const hmac = crypto.createHmac("sha256", SESSION_SECRET);
+    const hmac = crypto.createHmac("sha256", getSessionSecret());
     hmac.update(payloadBase64);
     const expectedSignature = hmac.digest("base64url");
 
