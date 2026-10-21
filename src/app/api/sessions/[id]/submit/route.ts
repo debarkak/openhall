@@ -42,6 +42,9 @@ export async function POST(
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
+    const body = await request.json().catch(() => ({}));
+    const isDisqualified = !!body.disqualified;
+
     // Evaluate responses
     const evalResult = evaluateSession(
       session.exam,
@@ -53,18 +56,18 @@ export async function POST(
     await prisma.examSession.update({
       where: { id: sessionId },
       data: {
-        status: "EVALUATED",
+        status: isDisqualified ? "DISQUALIFIED" : "EVALUATED",
         submittedAt: new Date(),
-        totalScore: evalResult.finalScore,
+        totalScore: isDisqualified ? 0 : evalResult.finalScore,
       },
     });
 
     // Notify proctors
     broadcastProctorEvent(session.examId, {
-      type: "CANDIDATE_SUBMITTED",
+      type: isDisqualified ? "CANDIDATE_DISQUALIFIED" : "CANDIDATE_SUBMITTED",
       sessionId,
       candidateName: session.candidate.name,
-      finalScore: evalResult.finalScore,
+      finalScore: isDisqualified ? 0 : evalResult.finalScore,
       maxMarks: evalResult.maxMarks,
       timestamp: new Date().toISOString(),
     });
