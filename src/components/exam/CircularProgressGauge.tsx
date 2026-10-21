@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { Clock } from "lucide-react";
 
 interface CircularProgressGaugeProps {
   remainingSeconds: number;
@@ -33,46 +34,36 @@ export const CircularProgressGauge: React.FC<CircularProgressGaugeProps> = ({
     };
   }, [remainingSeconds, totalDurationSeconds]);
 
-  // SVG radius r = 15.9155 gives a circumference of exactly 100 units
   return (
-    <div className="flex items-center gap-2 font-mono text-sm">
-      <div className="relative flex h-9 w-9 items-center justify-center">
-        <svg className="h-9 w-9 -rotate-90 transform" viewBox="0 0 36 36">
-          {/* Base track */}
-          <path
-            className="text-slate-200"
-            stroke="currentColor"
-            strokeWidth="3.5"
-            fill="none"
-            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          />
-          {/* Progress arc filling clockwise */}
-          <path
-            className={`transition-all duration-1000 ease-linear ${
-              isLowTime ? "text-brand-orange animate-pulse" : "text-brand-cyan"
+    <div className="flex items-center gap-2">
+      {/* Retro 3D Sunken LCD Timer Display */}
+      <div className="retro-sunken-dark px-3 py-1 flex items-center gap-2">
+        <Clock className="h-3.5 w-3.5 text-cyan-400" />
+        <div className="flex flex-col">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 leading-none">
+            Time Remaining
+          </span>
+          <span
+            className={`font-mono text-sm sm:text-base font-black tracking-widest leading-none mt-0.5 ${
+              isLowTime ? "text-red-400 animate-pulse" : "text-emerald-400"
             }`}
-            stroke="currentColor"
-            strokeDasharray="100, 100"
-            strokeDashoffset={100 - progressPercent}
-            strokeLinecap="round"
-            strokeWidth="3.5"
-            fill="none"
-            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          />
-        </svg>
+          >
+            {formattedTime}
+          </span>
+        </div>
       </div>
 
-      <div className="flex flex-col text-left">
-        <span className="font-sans text-[10px] font-medium leading-none text-slate-500">
-          Time left
-        </span>
-        <span
-          className={`font-mono text-sm font-bold tabular-nums leading-tight ${
-            isLowTime ? "text-brand-orange" : "text-slate-800"
-          }`}
-        >
-          {formattedTime}
-        </span>
+      {/* Classic 3D Progress Bar */}
+      <div className="hidden md:flex flex-col w-20">
+        <div className="text-[9px] font-bold uppercase text-slate-600 mb-0.5">
+          Progress: {Math.round(progressPercent)}%
+        </div>
+        <div className="retro-sunken h-2.5 w-full bg-slate-300 overflow-hidden">
+          <div
+            className="h-full bg-blue-600 transition-all duration-1000 ease-linear"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
       </div>
     </div>
   );
