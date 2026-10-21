@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { KaTeXRenderer } from "@/components/katex/KaTeXRenderer";
 import {
@@ -17,6 +17,10 @@ import {
   X,
   ChevronDown,
   Sparkles,
+  Copy,
+  Image as ImageIcon,
+  Sliders,
+  HelpCircle,
 } from "lucide-react";
 
 interface OptionItem {
@@ -91,30 +95,38 @@ export default function QuestionComposerPage({
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
   const [selectedQuestion, setSelectedQuestion] = useState<QuestionItem | null>(null);
 
-  // Discord-style Category Collapsing: Map<sectionId, boolean> (false = expanded)
+  // Left sidebar category collapsing
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
-  // Inline Section Editing State
+  // Inline section editing
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState("");
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
   const [customSectionInput, setCustomSectionInput] = useState("");
 
-  // Composer Form State
+  // Question Form State (Google Forms style)
+  const [questionType, setQuestionType] = useState<"single_choice" | "multiple_choice">("single_choice");
   const [stem, setStem] = useState("");
   const [diagramUrl, setDiagramUrl] = useState("");
+  const [showDiagramInput, setShowDiagramInput] = useState(false);
+  const [showFormulaBar, setShowFormulaBar] = useState(false);
   const [solutionExplanation, setSolutionExplanation] = useState("");
+  const [showExplanation, setShowExplanation] = useState(true);
   const [options, setOptions] = useState<OptionItem[]>([
     { orderIndex: 0, text: "", isCorrect: true },
     { orderIndex: 1, text: "", isCorrect: false },
     { orderIndex: 2, text: "", isCorrect: false },
     { orderIndex: 3, text: "", isCorrect: false },
   ]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  // Ref array for option inputs to enable fluid Google Forms Enter key hopping
+  const optionInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const loadExamDetail = async (preserveSectionId?: string) => {
     try {
@@ -142,6 +154,7 @@ export default function QuestionComposerPage({
     setSelectedQuestion(q);
     setStem(q.stem);
     setDiagramUrl(q.diagramUrl || "");
+    setShowDiagramInput(!!q.diagramUrl);
     setSolutionExplanation(q.solutionExplanation || "");
     setFeedback(null);
     setOptions(
@@ -161,6 +174,7 @@ export default function QuestionComposerPage({
     setSelectedQuestion(null);
     setStem("");
     setDiagramUrl("");
+    setShowDiagramInput(false);
     setSolutionExplanation("");
     setFeedback(null);
     setOptions([
@@ -169,6 +183,14 @@ export default function QuestionComposerPage({
       { orderIndex: 2, text: "", isCorrect: false },
       { orderIndex: 3, text: "", isCorrect: false },
     ]);
+  };
+
+  const handleDuplicateQuestion = () => {
+    setSelectedQuestion(null);
+    setFeedback({
+      type: "success",
+      message: "question duplicated as a new draft! adjust values and save when ready.",
+    });
   };
 
   const toggleCategoryCollapse = (secId: string) => {
@@ -183,12 +205,51 @@ export default function QuestionComposerPage({
     handleNewQuestion(secId);
     setCollapsedSections((prev) => ({
       ...prev,
-      [secId]: false, // Auto-expand when adding question
+      [secId]: false,
     }));
   };
 
   const insertMacro = (macro: string) => {
     setStem((prev) => prev + macro);
+  };
+
+  const handleAddOption = () => {
+    if (options.length >= 6) return;
+    const newIdx = options.length;
+    setOptions((prev) => [
+      ...prev,
+      { orderIndex: newIdx, text: "", isCorrect: false },
+    ]);
+    setTimeout(() => {
+      optionInputRefs.current[newIdx]?.focus();
+    }, 50);
+  };
+
+  const handleOptionKeyDown = (e: React.KeyboardEvent, optIdx: number) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (optIdx < options.length - 1) {
+        optionInputRefs.current[optIdx + 1]?.focus();
+      } else if (options.length < 6) {
+        handleAddOption();
+      }
+    }
+  };
+
+  const applyPreset = (preset: "4_choices" | "true_false") => {
+    if (preset === "4_choices") {
+      setOptions([
+        { orderIndex: 0, text: "", isCorrect: true },
+        { orderIndex: 1, text: "", isCorrect: false },
+        { orderIndex: 2, text: "", isCorrect: false },
+        { orderIndex: 3, text: "", isCorrect: false },
+      ]);
+    } else if (preset === "true_false") {
+      setOptions([
+        { orderIndex: 0, text: "true", isCorrect: true },
+        { orderIndex: 1, text: "false", isCorrect: false },
+      ]);
+    }
   };
 
   const handleCreateSection = async (title: string) => {
@@ -258,17 +319,17 @@ export default function QuestionComposerPage({
     }
   };
 
-  const handleSaveQuestion = async (e: React.FormEvent) => {
+  const handleSaveQuestion = async (e: React.FormEvent, andAddAnother = false) => {
     e.preventDefault();
     setFeedback(null);
 
     if (!selectedSectionId) {
-      setFeedback({ type: "error", message: "please select a category on the left first." });
+      setFeedback({ type: "error", message: "please select a category first." });
       return;
     }
 
     if (!stem.trim()) {
-      setFeedback({ type: "error", message: "question stem cannot be empty. please type a question." });
+      setFeedback({ type: "error", message: "question stem cannot be empty. please type a question prompt." });
       return;
     }
 
@@ -311,7 +372,7 @@ export default function QuestionComposerPage({
           type: "success",
           message: selectedQuestion
             ? "question updated successfully!"
-            : "question saved! ready for next question below.",
+            : "question saved! ready for the next question.",
         });
         await loadExamDetail(selectedSectionId);
         handleNewQuestion(selectedSectionId);
@@ -360,10 +421,17 @@ export default function QuestionComposerPage({
 
   const activeSection = exam.sections.find((s) => s.id === selectedSectionId) || exam.sections[0];
   const activeEmoji = activeSection ? getSubjectEmoji(activeSection.title) : "📁";
+  const activeQuestions = activeSection?.questions || [];
+  const currentQIndex = selectedQuestion
+    ? activeQuestions.findIndex((q) => q.id === selectedQuestion.id) + 1
+    : activeQuestions.length + 1;
+
+  const correctChoiceIdx = options.findIndex((o) => o.isCorrect);
+  const correctChoiceLetter = correctChoiceIdx >= 0 ? String.fromCharCode(97 + correctChoiceIdx) : "a";
 
   return (
     <div className="min-h-screen flex flex-col font-sans pb-8">
-      {/* Studio Header */}
+      {/* Studio Top Bar */}
       <header className="retro-titlebar sticky top-0 z-30 h-12 shadow-sm">
         <div className="flex items-center gap-3">
           <Link
@@ -392,7 +460,7 @@ export default function QuestionComposerPage({
       {/* Main Composer Workspace */}
       <div className="flex flex-1 flex-col md:flex-row p-4 gap-4 max-w-7xl mx-auto w-full">
         {/* Left Sidebar: Discord-Style Category & Channels Tree */}
-        <aside className="retro-window w-full md:w-80 shrink-0 p-3 flex flex-col select-none">
+        <aside className="retro-window w-full md:w-72 shrink-0 p-3 flex flex-col select-none">
           {/* Header Action */}
           <div className="flex items-center justify-between pb-2 mb-2 border-b-2 border-slate-300">
             <span className="text-[11px] font-black tracking-wider text-slate-800">
@@ -573,59 +641,9 @@ export default function QuestionComposerPage({
           </div>
         </aside>
 
-        {/* Center/Right: Visual Question Composer & Real-Time KaTeX Preview */}
-        <main className="retro-window flex-1 p-5 overflow-y-auto">
-          <form onSubmit={handleSaveQuestion} className="space-y-4">
-            {/* Header info & Action Buttons */}
-            <div className="retro-panel flex flex-wrap items-center justify-between gap-3 p-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-black text-slate-900">
-                    {selectedQuestion ? `editing question` : `compose new question`}
-                  </h2>
-                  {!selectedQuestion && (
-                    <span className="retro-btn bg-emerald-100 text-emerald-900 px-2 py-0.5 text-[10px] font-black">
-                      ● live draft
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-600">
-                  <span className="font-bold">category:</span>
-                  <span className="retro-sunken px-2 py-0.5 text-[11px] font-bold text-slate-800 bg-white">
-                    {activeEmoji} | {activeSection?.title.toLowerCase() || "none"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {selectedQuestion && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteQuestion(selectedQuestion.id)}
-                    className="retro-btn text-red-700 hover:bg-red-100 px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    delete
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleNewQuestion(selectedSectionId)}
-                  className="retro-btn px-3.5 py-1.5 text-xs font-bold"
-                >
-                  clear form
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="retro-btn-green px-5 py-1.5 text-xs sm:text-sm font-black inline-flex items-center gap-1.5"
-                >
-                  <Save className="h-4 w-4" />
-                  {isSaving ? "saving..." : selectedQuestion ? "update question" : "save question"}
-                </button>
-              </div>
-            </div>
-
+        {/* Right Side: Google Forms Style Question Maker Card */}
+        <main className="flex-1 overflow-y-auto">
+          <form onSubmit={handleSaveQuestion} className="space-y-3">
             {/* Notification / Toast Banner */}
             {feedback && (
               <div
@@ -644,182 +662,403 @@ export default function QuestionComposerPage({
               </div>
             )}
 
-            {/* Math Macro Toolbar */}
-            <div className="retro-panel p-3">
-              <span className="block text-[10px] font-black text-slate-700 mb-1.5">
-                katex formula shortcut bar (click to insert):
-              </span>
-              <div className="flex flex-wrap gap-1">
-                {[
-                  { label: "fraction \\frac", macro: "$\\frac{a}{b}$" },
-                  { label: "square root \\sqrt", macro: "$\\sqrt{x}$" },
-                  { label: "superscript x²", macro: "$x^2$" },
-                  { label: "subscript x_i", macro: "$x_i$" },
-                  { label: "integral \\int", macro: "$$\\int_{0}^{\\infty} f(x) dx$$" },
-                  { label: "sum \\sum", macro: "$$\\sum_{i=1}^{n} x_i$$" },
-                  { label: "matrix [M]", macro: "$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}$$" },
-                  { label: "α", macro: "$\\alpha$" },
-                  { label: "β", macro: "$\\beta$" },
-                  { label: "θ", macro: "$\\theta$" },
-                  { label: "π", macro: "$\\pi$" },
-                  { label: "±", macro: "$\\pm$" },
-                  { label: "≤", macro: "$\\le$" },
-                  { label: "≥", macro: "$\\ge$" },
-                  { label: "H₂SO₄", macro: "$\\text{H}_2\\text{SO}_4$" },
-                ].map((item, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => insertMacro(item.macro)}
-                    className="retro-btn px-2 py-0.5 text-[11px] font-mono hover:bg-white"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Google Forms Question Card */}
+            <div className="retro-window bg-white shadow-sm overflow-hidden border-2 border-slate-300">
+              {/* Form Top Accent Stripe */}
+              <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-500" />
 
-            {/* Question Stem Text Area */}
-            <div className="retro-panel p-4">
-              <label className="block text-[11px] font-black text-slate-800 mb-1.5">
-                question stem (supports latex $formula$ or markdown):
-              </label>
-              <textarea
-                rows={4}
-                value={stem}
-                onChange={(e) => setStem(e.target.value)}
-                placeholder="type question stem here. e.g. simplify $\frac{p + \sqrt{p^2-q^2}}{p - \sqrt{p^2-q^2}}$..."
-                className="retro-field w-full text-xs font-mono p-2.5"
-              />
-
-              {/* Real-Time Live KaTeX Preview */}
-              <div className="mt-3 pt-3 border-t border-slate-300">
-                <span className="text-[10px] font-black text-slate-600 mb-1 flex items-center gap-1">
-                  <Eye className="h-3 w-3" /> live render preview:
-                </span>
-                <div className="retro-sunken bg-white p-3 min-h-[44px] text-xs sm:text-sm text-slate-900">
-                  <KaTeXRenderer content={stem || "live formula preview will appear here..."} />
-                </div>
-              </div>
-            </div>
-
-            {/* Diagram URL Field */}
-            <div className="retro-panel p-4">
-              <label className="block text-[11px] font-black text-slate-800 mb-1.5">
-                diagram / vector graphic url (optional):
-              </label>
-              <input
-                type="text"
-                value={diagramUrl}
-                onChange={(e) => setDiagramUrl(e.target.value)}
-                placeholder="https://example.com/diagram.png or relative path"
-                className="retro-field w-full text-xs"
-              />
-              {diagramUrl && (
-                <div className="retro-sunken mt-3 p-2 bg-slate-50 flex justify-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={diagramUrl} alt="diagram preview" className="max-h-40 object-contain" />
-                </div>
-              )}
-            </div>
-
-            {/* Options Manager */}
-            <div className="retro-panel p-4">
-              <div className="flex items-center justify-between mb-3 border-b border-slate-300 pb-2">
-                <label className="block text-[11px] font-black text-slate-800">
-                  multiple choice options (select radio to set correct key):
-                </label>
-                {options.length < 6 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOptions((prev) => [
-                        ...prev,
-                        { orderIndex: prev.length, text: "", isCorrect: false },
-                      ])
-                    }
-                    className="retro-btn px-2 py-0.5 text-[10px] font-bold inline-flex items-center gap-1"
-                  >
-                    <Plus className="h-3 w-3" /> add choice
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                {options.map((opt, optIdx) => (
-                  <div
-                    key={optIdx}
-                    className={`flex items-center gap-2.5 p-2 ${
-                      opt.isCorrect
-                        ? "retro-sunken bg-emerald-50 border-emerald-600 font-bold"
-                        : "retro-panel bg-white"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="correctKey"
-                      checked={opt.isCorrect}
-                      onChange={() =>
-                        setOptions((prev) =>
-                          prev.map((o, i) => ({ ...o, isCorrect: i === optIdx }))
-                        )
-                      }
-                      className="h-4 w-4 text-emerald-700 cursor-pointer"
-                      title="set as correct answer"
-                    />
-
-                    <span className="retro-btn flex h-6 w-6 items-center justify-center text-xs font-black">
-                      {String.fromCharCode(97 + optIdx)}
+              <div className="p-4 sm:p-5 space-y-4">
+                {/* Card Header Row: Question Counter, Category Tag & Question Type Dropdown */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-200">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="retro-btn bg-slate-100 px-2.5 py-0.5 text-xs font-black text-slate-800">
+                      question #{currentQIndex}
                     </span>
-
-                    <input
-                      type="text"
-                      value={opt.text}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setOptions((prev) =>
-                          prev.map((o, i) => (i === optIdx ? { ...o, text: val } : o))
-                        );
-                      }}
-                      placeholder={`choice ${optIdx + 1} formula (e.g. $\\frac{p^2}{q^2}$)`}
-                      className="retro-field flex-1 text-xs py-1"
-                    />
-
-                    {opt.text && opt.text.includes("$") && (
-                      <div className="retro-sunken bg-white px-2 py-0.5 text-xs">
-                        <KaTeXRenderer content={opt.text} />
-                      </div>
+                    {!selectedQuestion ? (
+                      <span className="retro-btn bg-emerald-100 text-emerald-900 px-2 py-0.5 text-[10px] font-black inline-flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                        draft
+                      </span>
+                    ) : (
+                      <span className="retro-btn bg-amber-100 text-amber-900 px-2 py-0.5 text-[10px] font-black">
+                        editing
+                      </span>
                     )}
 
-                    {options.length > 2 && (
+                    {/* Category Selector on Question Card */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px] font-bold text-slate-500">in:</span>
+                      <select
+                        value={selectedSectionId}
+                        onChange={(e) => setSelectedSectionId(e.target.value)}
+                        className="retro-field text-xs font-bold py-0.5 px-2 bg-white"
+                      >
+                        {exam.sections.map((sec) => (
+                          <option key={sec.id} value={sec.id}>
+                            {getSubjectEmoji(sec.title)} {sec.title.toLowerCase()}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* Google Forms Question Type Selector */}
+                    <div className="flex items-center gap-1">
+                      <select
+                        value={questionType}
+                        onChange={(e) => setQuestionType(e.target.value as any)}
+                        className="retro-field text-xs font-bold py-1 px-2.5 bg-slate-50"
+                      >
+                        <option value="single_choice">🔘 multiple choice (single answer)</option>
+                        <option value="multiple_choice">☑️ checkboxes (multiple answer)</option>
+                      </select>
+                    </div>
+
+                    <span className="retro-sunken px-2 py-0.5 text-[11px] font-bold text-slate-600 bg-slate-50">
+                      +{exam.positiveMarks.toFixed(1)} marks
+                    </span>
+                  </div>
+                </div>
+
+                {/* Question Prompt (Stem) Area */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-black text-slate-800">
+                      question prompt:
+                    </label>
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() =>
-                          setOptions((prev) => prev.filter((_, i) => i !== optIdx))
-                        }
-                        className="retro-btn p-1 text-red-700 hover:bg-red-100"
-                        title="remove choice"
+                        onClick={() => setShowDiagramInput((prev) => !prev)}
+                        className={`retro-btn px-2 py-0.5 text-[10px] font-bold inline-flex items-center gap-1 ${
+                          showDiagramInput ? "bg-sky-100 text-sky-900 border-sky-400" : ""
+                        }`}
+                        title="toggle diagram image attachment"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <ImageIcon className="h-3 w-3" />
+                        {showDiagramInput ? "hide image" : "add image"}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowFormulaBar((prev) => !prev)}
+                        className={`retro-btn px-2 py-0.5 text-[10px] font-bold inline-flex items-center gap-1 ${
+                          showFormulaBar ? "bg-amber-100 text-amber-900 border-amber-400" : ""
+                        }`}
+                        title="toggle math formulas palette"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        {showFormulaBar ? "hide math bar" : "math bar"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <textarea
+                    rows={3}
+                    value={stem}
+                    onChange={(e) => setStem(e.target.value)}
+                    placeholder="type question stem here (e.g. calculate the gaussian integral: $\int_{0}^{\infty} e^{-x^2} dx$)..."
+                    className="retro-field w-full text-xs sm:text-sm font-sans p-3 leading-relaxed"
+                  />
+
+                  {/* Real-Time Live KaTeX Formula Preview */}
+                  {stem.trim() && (
+                    <div className="retro-sunken bg-slate-50 p-2.5 text-xs text-slate-900">
+                      <span className="block text-[9px] font-bold text-slate-500 mb-0.5 flex items-center gap-1">
+                        <Eye className="h-3 w-3" /> formula live preview:
+                      </span>
+                      <KaTeXRenderer content={stem} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Collapsible Diagram URL Row */}
+                {showDiagramInput && (
+                  <div className="retro-panel p-3 bg-slate-50/70 border border-slate-300 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <ImageIcon className="h-3.5 w-3.5 text-slate-500" />
+                        diagram / image url:
+                      </label>
+                      {diagramUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setDiagramUrl("")}
+                          className="text-[10px] text-red-600 hover:underline font-bold"
+                        >
+                          remove image
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={diagramUrl}
+                      onChange={(e) => setDiagramUrl(e.target.value)}
+                      placeholder="https://example.com/diagram.png or local upload url"
+                      className="retro-field w-full text-xs py-1.5 px-2"
+                    />
+                    {diagramUrl && (
+                      <div className="retro-sunken p-2 bg-white flex justify-center max-h-48 overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={diagramUrl} alt="diagram preview" className="max-h-40 object-contain" />
+                      </div>
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
+                )}
 
-            {/* Explanation / Solution Note */}
-            <div className="retro-panel p-4">
-              <label className="block text-[11px] font-black text-slate-800 mb-1.5">
-                solution explanation (shown on candidate scorecard):
-              </label>
-              <textarea
-                rows={3}
-                value={solutionExplanation}
-                onChange={(e) => setSolutionExplanation(e.target.value)}
-                placeholder="step-by-step mathematical reasoning or physics derivation..."
-                className="retro-field w-full text-xs p-2.5"
-              />
+                {/* Collapsible Math Formula Shortcut Bar */}
+                {showFormulaBar && (
+                  <div className="retro-panel p-2.5 bg-amber-50/50 border border-amber-200">
+                    <span className="block text-[10px] font-black text-slate-700 mb-1.5">
+                      click formula snippet to insert into question stem:
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        { label: "fraction \\frac", macro: "$\\frac{a}{b}$" },
+                        { label: "square root \\sqrt", macro: "$\\sqrt{x}$" },
+                        { label: "superscript x²", macro: "$x^2$" },
+                        { label: "subscript x_i", macro: "$x_i$" },
+                        { label: "integral \\int", macro: "$$\\int_{0}^{\\infty} f(x) dx$$" },
+                        { label: "sum \\sum", macro: "$$\\sum_{i=1}^{n} x_i$$" },
+                        { label: "matrix [M]", macro: "$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}$$" },
+                        { label: "α", macro: "$\\alpha$" },
+                        { label: "β", macro: "$\\beta$" },
+                        { label: "θ", macro: "$\\theta$" },
+                        { label: "π", macro: "$\\pi$" },
+                        { label: "±", macro: "$\\pm$" },
+                        { label: "≤", macro: "$\\le$" },
+                        { label: "≥", macro: "$\\ge$" },
+                        { label: "H₂SO₄", macro: "$\\text{H}_2\\text{SO}_4$" },
+                      ].map((item, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => insertMacro(item.macro)}
+                          className="retro-btn px-2 py-0.5 text-[10px] font-mono hover:bg-white"
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Multiple Choice Options List (Google Forms Style) */}
+                <div className="space-y-2 pt-2 border-t border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-xs font-black text-slate-800">
+                        options:
+                      </label>
+                      <span className="text-[10px] text-slate-500 font-medium">
+                        click the circle to set the correct answer key. press enter to add next option.
+                      </span>
+                    </div>
+
+                    {/* Quick Presets */}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => applyPreset("4_choices")}
+                        className="retro-btn px-2 py-0.5 text-[10px] text-slate-700"
+                        title="reset to 4 choices (a, b, c, d)"
+                      >
+                        + 4 choices
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyPreset("true_false")}
+                        className="retro-btn px-2 py-0.5 text-[10px] text-slate-700"
+                        title="set options to true / false"
+                      >
+                        + true / false
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {options.map((opt, optIdx) => (
+                      <div
+                        key={optIdx}
+                        className={`group flex items-center gap-2 p-1.5 rounded transition-colors ${
+                          opt.isCorrect
+                            ? "retro-sunken bg-emerald-50/80 border-emerald-500"
+                            : "hover:bg-slate-50 border border-transparent"
+                        }`}
+                      >
+                        {/* Radio Button for Answer Key */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOptions((prev) =>
+                              prev.map((o, i) => ({
+                                ...o,
+                                isCorrect: questionType === "multiple_choice" ? (i === optIdx ? !o.isCorrect : o.isCorrect) : i === optIdx,
+                              }))
+                            );
+                          }}
+                          className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                            opt.isCorrect
+                              ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
+                              : "border-slate-400 hover:border-slate-600 bg-white"
+                          }`}
+                          title={opt.isCorrect ? "marked as correct answer key" : "click to set as correct answer"}
+                        >
+                          {opt.isCorrect ? <Check className="h-3 w-3 stroke-[3]" /> : null}
+                        </button>
+
+                        {/* Letter Identifier */}
+                        <span className="retro-btn flex h-6 w-6 shrink-0 items-center justify-center text-xs font-black select-none">
+                          {String.fromCharCode(97 + optIdx)}
+                        </span>
+
+                        {/* Option Input Field */}
+                        <input
+                          ref={(el) => {
+                            optionInputRefs.current[optIdx] = el;
+                          }}
+                          type="text"
+                          value={opt.text}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setOptions((prev) =>
+                              prev.map((o, i) => (i === optIdx ? { ...o, text: val } : o))
+                            );
+                          }}
+                          onKeyDown={(e) => handleOptionKeyDown(e, optIdx)}
+                          placeholder={`choice ${optIdx + 1} formula (e.g. $\\frac{\\sqrt{\\pi}}{2}$)`}
+                          className="retro-field flex-1 text-xs py-1.5 px-2 bg-white"
+                        />
+
+                        {/* Inline Math Preview Badge */}
+                        {opt.text && opt.text.includes("$") && (
+                          <div className="retro-sunken bg-white px-2 py-0.5 text-xs shrink-0 max-w-[140px] truncate">
+                            <KaTeXRenderer content={opt.text} />
+                          </div>
+                        )}
+
+                        {/* Remove Option Button */}
+                        {options.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOptions((prev) => prev.filter((_, i) => i !== optIdx))
+                            }
+                            className="retro-btn p-1 text-red-700 hover:bg-red-100 opacity-60 group-hover:opacity-100 transition-opacity"
+                            title="remove choice"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Google Forms Style "+ Add option" Row */}
+                  {options.length < 6 && (
+                    <div className="pt-1 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAddOption}
+                        className="flex items-center gap-2 px-2 py-1 text-xs font-bold text-blue-700 hover:text-blue-900 rounded hover:bg-blue-50 transition-colors"
+                      >
+                        <span className="h-4 w-4 rounded-full border-2 border-dashed border-blue-400 flex items-center justify-center text-[11px] font-black">
+                          +
+                        </span>
+                        <span>add option</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Answer Key & Explanation Drawer (Google Forms Quiz Style) */}
+                <div className="retro-panel p-3 bg-slate-50 border border-slate-300 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-black text-slate-800">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <span>answer key:</span>
+                      <span className="retro-sunken px-2 py-0.5 font-mono text-[11px] bg-white text-emerald-800">
+                        choice [{correctChoiceLetter}]
+                      </span>
+                      <span className="text-[11px] font-normal text-slate-500">
+                        (+{exam.positiveMarks.toFixed(1)} marks)
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowExplanation((prev) => !prev)}
+                      className="text-[11px] text-blue-700 hover:underline font-bold"
+                    >
+                      {showExplanation ? "hide explanation" : "add explanation / derivation"}
+                    </button>
+                  </div>
+
+                  {showExplanation && (
+                    <div className="space-y-1.5 pt-1">
+                      <textarea
+                        rows={2}
+                        value={solutionExplanation}
+                        onChange={(e) => setSolutionExplanation(e.target.value)}
+                        placeholder="step-by-step mathematical reasoning or physics derivation shown on candidate scorecard..."
+                        className="retro-field w-full text-xs p-2 bg-white"
+                      />
+                      {solutionExplanation.trim() && (
+                        <div className="retro-sunken bg-white p-2 text-xs text-slate-800">
+                          <KaTeXRenderer content={solutionExplanation} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Google Forms Bottom Action Row */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-300">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleDuplicateQuestion}
+                      className="retro-btn px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1 hover:bg-slate-100"
+                      title="duplicate this question as a new draft"
+                    >
+                      <Copy className="h-3.5 w-3.5 text-slate-600" />
+                      duplicate
+                    </button>
+
+                    {selectedQuestion && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteQuestion(selectedQuestion.id)}
+                        className="retro-btn text-red-700 hover:bg-red-100 px-2.5 py-1 text-xs font-bold inline-flex items-center gap-1"
+                        title="delete question"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        delete
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleNewQuestion(selectedSectionId)}
+                      className="retro-btn px-2.5 py-1 text-xs font-bold"
+                      title="clear form"
+                    >
+                      clear
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      className="retro-btn-green px-5 py-1.5 text-xs sm:text-sm font-black inline-flex items-center gap-1.5 shadow"
+                    >
+                      <Save className="h-4 w-4" />
+                      {isSaving ? "saving..." : selectedQuestion ? "update question" : "save question"}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </form>
         </main>
