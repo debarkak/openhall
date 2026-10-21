@@ -430,16 +430,16 @@ export default function ExamPlayerPage({
                   <div
                     key={option.id}
                     onClick={() => setSelectedOptionId(option.id)}
-                    className={`flex items-center gap-3 p-3 cursor-pointer select-none transition-none ${
+                    className={`flex items-center gap-3 p-3 cursor-pointer select-none rounded-md border transition-all ${
                       isSelected
-                        ? "retro-sunken bg-sky-50 border-sky-600 ring-2 ring-sky-700 font-bold"
-                        : "retro-panel hover:bg-slate-200"
+                        ? "bg-gradient-to-r from-sky-100 via-sky-50 to-white border-sky-500 shadow-sm ring-1 ring-sky-500 font-bold"
+                        : "retro-panel hover:bg-slate-100"
                     }`}
                   >
-                    {/* Square 3D Indicator */}
+                    {/* 2005 Glossy Indicator Pill */}
                     <div
-                      className={`retro-btn flex h-7 w-7 shrink-0 items-center justify-center text-xs font-black ${
-                        isSelected ? "bg-sky-700 text-white border-sky-900" : ""
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center text-xs font-black ${
+                        isSelected ? "retro-btn-cyan" : "retro-btn"
                       }`}
                     >
                       {letter}
@@ -477,23 +477,23 @@ export default function ExamPlayerPage({
               startIndex={sectionStartQuestionNumber}
             />
 
-            {/* Legend */}
-            <div className="retro-sunken bg-white p-3 mt-4 space-y-1.5 text-xs text-slate-700">
+            {/* 2005 Legend */}
+            <div className="retro-sunken bg-white p-3 mt-4 space-y-2 text-xs text-slate-700">
               <div className="flex items-center gap-2">
-                <span className="h-3.5 w-3.5 border-2 border-t-[#86efac] border-l-[#86efac] border-r-[#14532d] border-b-[#14532d] bg-[#15803d]" />
-                <span className="font-semibold">Attempted &amp; Saved</span>
+                <span className="h-4 w-4 retro-btn-green rounded text-[9px] flex items-center justify-center font-black">✓</span>
+                <span className="font-bold text-slate-800">Attempted &amp; Saved</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="h-3.5 w-3.5 border-2 border-t-[#fdba74] border-l-[#fdba74] border-r-[#9a3412] border-b-[#9a3412] bg-[#ea580c]" />
-                <span className="font-semibold">Visited (Unanswered)</span>
+                <span className="h-4 w-4 retro-btn-orange rounded text-[9px] flex items-center justify-center font-black">!</span>
+                <span className="font-bold text-slate-800">Visited (Unanswered)</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="h-3.5 w-3.5 border-2 border-t-[#1e293b] border-l-[#1e293b] border-r-white border-b-white bg-amber-100 ring-1 ring-blue-600" />
-                <span className="font-semibold">Active Current</span>
+                <span className="h-4 w-4 retro-btn ring-2 ring-blue-600 rounded text-[9px] flex items-center justify-center font-black">●</span>
+                <span className="font-bold text-slate-800">Active Current</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="h-3.5 w-3.5 border-2 border-t-white border-l-white border-r-[#475569] border-b-[#475569] bg-[#e2e8f0]" />
-                <span className="font-semibold">Unvisited</span>
+                <span className="h-4 w-4 retro-btn rounded text-[9px] flex items-center justify-center">○</span>
+                <span className="font-semibold text-slate-700">Unvisited</span>
               </div>
             </div>
           </div>
