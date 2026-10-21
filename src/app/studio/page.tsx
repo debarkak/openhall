@@ -34,7 +34,7 @@ export default function TeacherStudioPage() {
         setExams(data);
       }
     } catch (err) {
-      console.error("Failed to load exams:", err);
+      console.error("failed to load exams:", err);
     } finally {
       setLoading(false);
     }
@@ -53,9 +53,9 @@ export default function TeacherStudioPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: newTitle,
+          title: newTitle.toLowerCase(),
           durationSeconds: parseInt(newDuration) * 60,
-          accessCode: newCode || undefined,
+          accessCode: newCode ? newCode.toLowerCase() : undefined,
           isLive: newStatus === "ACTIVE",
         }),
       });
@@ -68,7 +68,7 @@ export default function TeacherStudioPage() {
         loadExams();
       }
     } catch (err) {
-      console.error("Create exam failed:", err);
+      console.error("create exam failed:", err);
     }
   };
 
@@ -85,12 +85,12 @@ export default function TeacherStudioPage() {
         );
       }
     } catch (err) {
-      console.error("Toggle live error:", err);
+      console.error("toggle live error:", err);
     }
   };
 
   const handleDeleteExam = async (examId: string, title: string) => {
-    if (!confirm(`Are you sure you want to permanently delete "${title}"? This will remove all sections and candidate sessions.`)) {
+    if (!confirm(`are you sure you want to permanently delete "${title}"? this will remove all sections and candidate sessions.`)) {
       return;
     }
 
@@ -100,7 +100,7 @@ export default function TeacherStudioPage() {
         setExams((prev) => prev.filter((e) => e.id !== examId));
       }
     } catch (err) {
-      console.error("Delete exam error:", err);
+      console.error("delete exam error:", err);
     }
   };
 
@@ -112,11 +112,11 @@ export default function TeacherStudioPage() {
           <Link href="/" className="flex items-center gap-1.5 hover:opacity-90">
             <Laptop className="h-4 w-4 text-sky-200" />
             <span className="text-sm font-black tracking-tight text-white">
-              Open<span className="text-emerald-300">Hall</span>
+              open<span className="text-emerald-300">hall</span>
             </span>
           </Link>
           <span className="retro-btn bg-slate-200 px-2 py-0.5 text-[10px] text-slate-800">
-            TEACHER STUDIO CMS
+            teacher studio cms
           </span>
         </div>
 
@@ -126,7 +126,7 @@ export default function TeacherStudioPage() {
             className="retro-btn px-2.5 py-1 text-[11px] font-bold text-slate-900 inline-flex items-center gap-1.5 hover:bg-slate-100"
           >
             <Eye className="h-3.5 w-3.5" />
-            Candidate Lobby
+            candidate lobby
           </Link>
           <button
             type="button"
@@ -134,7 +134,7 @@ export default function TeacherStudioPage() {
             className="retro-btn-green px-3 py-1 text-[11px] inline-flex items-center gap-1"
           >
             <Plus className="h-3.5 w-3.5" />
-            New Exam
+            new test
           </button>
         </div>
       </header>
@@ -143,15 +143,15 @@ export default function TeacherStudioPage() {
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
         <div className="retro-panel flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 mb-6">
           <div>
-            <h1 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
-              Exam Studio &amp; Paper Management
+            <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+              exam studio &amp; paper management
             </h1>
             <p className="text-xs text-slate-600">
-              Compose multi-section papers with visual LaTeX formulas, manage access codes, and monitor telemetry.
+              compose multi-section papers with visual latex formulas, manage access codes, and monitor telemetry.
             </p>
           </div>
           <div className="retro-sunken px-3 py-1 font-mono text-xs font-bold text-slate-800">
-            TOTAL PAPERS: {exams.length}
+            total papers: {exams.length}
           </div>
         </div>
 
@@ -159,7 +159,7 @@ export default function TeacherStudioPage() {
         {loading ? (
           <div className="py-20 text-center">
             <div className="retro-sunken-dark inline-block p-4 font-mono text-xs text-emerald-400">
-              LOADING EXAMINATION REGISTRY...
+              loading examination registry...
             </div>
           </div>
         ) : (
@@ -178,29 +178,29 @@ export default function TeacherStudioPage() {
                     {/* Top Row: Code, Status Pill, and Duration */}
                     <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-300">
                       <span className="retro-sunken px-2 py-0.5 text-[11px] font-mono font-bold text-sky-800">
-                        {exam.accessCode}
+                        {exam.accessCode.toLowerCase()}
                       </span>
 
                       {/* Status Toggle Button */}
                       <button
                         type="button"
                         onClick={() => toggleExamLive(exam.id, exam.isLive)}
-                        className={`retro-btn px-2 py-0.5 text-[10px] uppercase font-bold cursor-pointer ${
+                        className={`retro-btn px-2 py-0.5 text-[10px] font-bold cursor-pointer ${
                           exam.isLive ? "bg-emerald-100 text-emerald-900" : "bg-slate-200 text-slate-600"
                         }`}
-                        title="Click to toggle publication status"
+                        title="click to toggle publication status"
                       >
-                        {exam.isLive ? "● LIVE ACTIVE" : "○ UPCOMING"}
+                        {exam.isLive ? "● live" : "○ upcoming"}
                       </button>
 
                       <span className="text-[11px] font-mono font-bold text-slate-600 flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {Math.floor(exam.durationSeconds / 60)}M
+                        {Math.floor(exam.durationSeconds / 60)}m
                       </span>
                     </div>
 
                     <h2 className="text-sm font-bold text-slate-900 leading-snug">
-                      {exam.title}
+                      {exam.title.toLowerCase()}
                     </h2>
 
                     <div className="mt-2.5 flex flex-wrap gap-1">
@@ -209,14 +209,14 @@ export default function TeacherStudioPage() {
                           key={s.id}
                           className="retro-sunken px-1.5 py-0.5 text-[10px] font-bold text-slate-700 bg-white"
                         >
-                          {s.title} ({s.questions.length})
+                          {s.title.toLowerCase()} ({s.questions.length})
                         </span>
                       ))}
                     </div>
 
                     <div className="retro-sunken bg-white p-2 mt-3 flex items-center justify-between text-[11px] text-slate-700">
-                      <span><strong>{totalQuestions}</strong> Questions</span>
-                      <span><strong>{exam._count.sessions}</strong> Enrolled</span>
+                      <span><strong>{totalQuestions}</strong> questions</span>
+                      <span><strong>{exam._count.sessions}</strong> enrolled</span>
                     </div>
                   </div>
 
@@ -227,14 +227,14 @@ export default function TeacherStudioPage() {
                         className="retro-btn-cyan px-2.5 py-1 text-[11px] inline-flex items-center gap-1"
                       >
                         <Shield className="h-3 w-3" />
-                        Proctor
+                        proctor
                       </Link>
 
                       <button
                         type="button"
                         onClick={() => handleDeleteExam(exam.id, exam.title)}
                         className="retro-btn p-1 text-red-700 hover:bg-red-100"
-                        title="Delete exam"
+                        title="delete exam"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -244,7 +244,7 @@ export default function TeacherStudioPage() {
                       href={`/studio/${exam.id}`}
                       className="retro-btn-orange px-3 py-1 text-[11px] inline-flex items-center gap-1 font-bold"
                     >
-                      Edit Questions <ArrowRight className="h-3 w-3" />
+                      edit questions <ArrowRight className="h-3 w-3" />
                     </Link>
                   </div>
                 </div>
@@ -257,10 +257,10 @@ export default function TeacherStudioPage() {
       {/* Create Exam Modal */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-          <div className="retro-window w-full max-w-md overflow-hidden">
+          <div className="retro-window w-full max-w-sm overflow-hidden">
             <div className="retro-titlebar">
-              <span className="text-xs font-bold uppercase tracking-wider">
-                Create New Examination Paper
+              <span className="text-xs font-bold tracking-wide">
+                create new test
               </span>
               <button
                 type="button"
@@ -271,24 +271,24 @@ export default function TeacherStudioPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateExam} className="p-5 space-y-3.5">
+            <form onSubmit={handleCreateExam} className="p-4 space-y-3">
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                  Examination Title
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  test title
                 </label>
                 <input
                   type="text"
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g. Science Olympiad Mock 2"
-                  className="retro-field w-full text-xs"
+                  placeholder="e.g. physics midterm, math quiz 1"
+                  className="retro-field w-full text-xs p-2"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                  Duration (Minutes)
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  duration (minutes)
                 </label>
                 <input
                   type="number"
@@ -296,73 +296,73 @@ export default function TeacherStudioPage() {
                   max="360"
                   value={newDuration}
                   onChange={(e) => setNewDuration(e.target.value)}
-                  className="retro-field w-full text-xs"
+                  className="retro-field w-full text-xs p-2"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                  Initial Publication Status
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  initial status
                 </label>
                 <div className="grid grid-cols-2 gap-2 mt-1">
                   <button
                     type="button"
                     onClick={() => setNewStatus("ACTIVE")}
-                    className={`p-2 text-left border-2 text-xs font-bold cursor-pointer ${
+                    className={`p-2 text-left rounded-md border text-xs font-bold cursor-pointer ${
                       newStatus === "ACTIVE"
-                        ? "border-[#14532d] bg-emerald-100 text-emerald-900"
-                        : "border-slate-400 bg-slate-200 text-slate-700"
+                        ? "border-[#14532d] bg-emerald-100 text-emerald-900 ring-1 ring-emerald-600"
+                        : "border-slate-300 bg-slate-100 text-slate-700"
                     }`}
                   >
-                    ● Active Series
+                    ● live
                     <span className="block font-normal text-[10px] text-slate-600 mt-0.5">
-                      Open in student lobby
+                      open in student lobby
                     </span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setNewStatus("UPCOMING")}
-                    className={`p-2 text-left border-2 text-xs font-bold cursor-pointer ${
+                    className={`p-2 text-left rounded-md border text-xs font-bold cursor-pointer ${
                       newStatus === "UPCOMING"
-                        ? "border-amber-700 bg-amber-100 text-amber-900"
-                        : "border-slate-400 bg-slate-200 text-slate-700"
+                        ? "border-amber-700 bg-amber-100 text-amber-900 ring-1 ring-amber-600"
+                        : "border-slate-300 bg-slate-100 text-slate-700"
                     }`}
                   >
-                    ○ Upcoming Series
+                    ○ upcoming
                     <span className="block font-normal text-[10px] text-slate-600 mt-0.5">
-                      Locked until test day
+                      locked until published
                     </span>
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase text-slate-700 mb-1">
-                  Custom Access Code (Optional)
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  access code (optional)
                 </label>
                 <input
                   type="text"
                   value={newCode}
                   onChange={(e) => setNewCode(e.target.value)}
-                  placeholder="e.g. OH-MOCK-10"
-                  className="retro-field w-full font-mono text-xs uppercase"
+                  placeholder="e.g. quiz-01"
+                  className="retro-field w-full font-mono text-xs p-2"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="retro-btn px-4 py-1.5 text-xs"
+                  className="retro-btn px-3.5 py-1 text-xs"
                 >
-                  Cancel
+                  cancel
                 </button>
                 <button
                   type="submit"
-                  className="retro-btn-green px-5 py-1.5 text-xs"
+                  className="retro-btn-green px-4 py-1 text-xs font-bold"
                 >
-                  Create Examination
+                  create test
                 </button>
               </div>
             </form>

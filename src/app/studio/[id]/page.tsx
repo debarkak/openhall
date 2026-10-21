@@ -53,14 +53,14 @@ interface ExamDetail {
 }
 
 const SUBJECT_PRESETS = [
-  { title: "Mental Ability Test (MAT)", emoji: "🧠", desc: "Logic & Analytical Reasoning" },
-  { title: "Mathematics", emoji: "📐", desc: "Algebra, Geometry & Calculus" },
-  { title: "Natural Sciences", emoji: "🔬", desc: "Physics, Chemistry & Biology" },
-  { title: "Physics", emoji: "⚛️", desc: "Mechanics, Electricity & Optics" },
-  { title: "Chemistry", emoji: "🧪", desc: "Physical, Organic & Inorganic" },
-  { title: "Biology", emoji: "🧬", desc: "Botany, Zoology & Genetics" },
-  { title: "English & Verbal", emoji: "📖", desc: "Comprehension & Vocabulary" },
-  { title: "General Knowledge (GK)", emoji: "📜", desc: "Current Affairs & History" },
+  { title: "mathematics", emoji: "📐", desc: "algebra, geometry & calculus" },
+  { title: "physics", emoji: "⚛️", desc: "mechanics, electricity & optics" },
+  { title: "chemistry", emoji: "🧪", desc: "organic, inorganic & physical" },
+  { title: "computer science", emoji: "💻", desc: "algorithms, data structures & coding" },
+  { title: "biology", emoji: "🧬", desc: "genetics, physiology & ecology" },
+  { title: "logic & reasoning", emoji: "🧠", desc: "analytical thinking & puzzles" },
+  { title: "english & writing", emoji: "📖", desc: "grammar, reading & vocab" },
+  { title: "general", emoji: "📁", desc: "miscellaneous questions" },
 ];
 
 function getSubjectEmoji(title: string): string {
@@ -127,7 +127,7 @@ export default function QuestionComposerPage({
         setSelectedSectionId(targetSecId);
       }
     } catch (err) {
-      console.error("Failed to load exam detail:", err);
+      console.error("failed to load exam detail:", err);
     } finally {
       setLoading(false);
     }
@@ -198,7 +198,7 @@ export default function QuestionComposerPage({
       const res = await fetch(`/api/admin/exams/${examId}/sections`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim() }),
+        body: JSON.stringify({ title: title.trim().toLowerCase() }),
       });
 
       if (res.ok) {
@@ -207,12 +207,12 @@ export default function QuestionComposerPage({
         setCustomSectionInput("");
         await loadExamDetail(newSec.id);
         startDraftInSection(newSec.id);
-        setFeedback({ type: "success", message: `Category "${newSec.title}" created successfully!` });
+        setFeedback({ type: "success", message: `category "${newSec.title.toLowerCase()}" created successfully!` });
       } else {
-        setFeedback({ type: "error", message: "Failed to create category." });
+        setFeedback({ type: "error", message: "failed to create category." });
       }
     } catch {
-      setFeedback({ type: "error", message: "Network error creating category." });
+      setFeedback({ type: "error", message: "network error creating category." });
     }
   };
 
@@ -226,35 +226,35 @@ export default function QuestionComposerPage({
       const res = await fetch(`/api/admin/sections/${secId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: editingSectionTitle.trim() }),
+        body: JSON.stringify({ title: editingSectionTitle.trim().toLowerCase() }),
       });
 
       if (res.ok) {
         setEditingSectionId(null);
         await loadExamDetail(secId);
-        setFeedback({ type: "success", message: "Category renamed successfully." });
+        setFeedback({ type: "success", message: "category renamed successfully." });
       } else {
-        setFeedback({ type: "error", message: "Failed to rename category." });
+        setFeedback({ type: "error", message: "failed to rename category." });
       }
     } catch {
-      setFeedback({ type: "error", message: "Network error updating category." });
+      setFeedback({ type: "error", message: "network error updating category." });
     }
   };
 
   const handleDeleteSection = async (secId: string, title: string) => {
-    if (!confirm(`Are you sure you want to delete category "${title}" and all its questions?`)) return;
+    if (!confirm(`are you sure you want to delete category "${title}" and all its questions?`)) return;
 
     try {
       const res = await fetch(`/api/admin/sections/${secId}`, { method: "DELETE" });
       if (res.ok) {
         await loadExamDetail();
         handleNewQuestion();
-        setFeedback({ type: "success", message: `Deleted category "${title}".` });
+        setFeedback({ type: "success", message: `deleted category "${title}".` });
       } else {
-        setFeedback({ type: "error", message: "Failed to delete category." });
+        setFeedback({ type: "error", message: "failed to delete category." });
       }
     } catch {
-      setFeedback({ type: "error", message: "Network error deleting category." });
+      setFeedback({ type: "error", message: "network error deleting category." });
     }
   };
 
@@ -263,12 +263,12 @@ export default function QuestionComposerPage({
     setFeedback(null);
 
     if (!selectedSectionId) {
-      setFeedback({ type: "error", message: "Please select a category on the left first." });
+      setFeedback({ type: "error", message: "please select a category on the left first." });
       return;
     }
 
     if (!stem.trim()) {
-      setFeedback({ type: "error", message: "Question stem cannot be empty. Please type a question." });
+      setFeedback({ type: "error", message: "question stem cannot be empty. please type a question." });
       return;
     }
 
@@ -276,7 +276,7 @@ export default function QuestionComposerPage({
     if (filledOptions.length < 2) {
       setFeedback({
         type: "error",
-        message: "Please enter text for at least 2 multiple-choice options.",
+        message: "please enter text for at least 2 multiple-choice options.",
       });
       return;
     }
@@ -310,8 +310,8 @@ export default function QuestionComposerPage({
         setFeedback({
           type: "success",
           message: selectedQuestion
-            ? "Question updated successfully!"
-            : "Question saved! Ready for next question below.",
+            ? "question updated successfully!"
+            : "question saved! ready for next question below.",
         });
         await loadExamDetail(selectedSectionId);
         handleNewQuestion(selectedSectionId);
@@ -319,30 +319,30 @@ export default function QuestionComposerPage({
         const errData = await res.json().catch(() => ({}));
         setFeedback({
           type: "error",
-          message: errData.error || "Failed to save question. Please try again.",
+          message: errData.error || "failed to save question. please try again.",
         });
       }
     } catch (err) {
-      console.error("Failed to save question:", err);
-      setFeedback({ type: "error", message: "Network error while saving question." });
+      console.error("failed to save question:", err);
+      setFeedback({ type: "error", message: "network error while saving question." });
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteQuestion = async (qId: string) => {
-    if (!confirm("Are you sure you want to delete this question?")) return;
+    if (!confirm("are you sure you want to delete this question?")) return;
     try {
       const res = await fetch(`/api/admin/questions/${qId}`, { method: "DELETE" });
       if (res.ok) {
-        setFeedback({ type: "success", message: "Question deleted successfully." });
+        setFeedback({ type: "success", message: "question deleted successfully." });
         handleNewQuestion(selectedSectionId);
         await loadExamDetail(selectedSectionId);
       } else {
-        setFeedback({ type: "error", message: "Failed to delete question." });
+        setFeedback({ type: "error", message: "failed to delete question." });
       }
     } catch {
-      setFeedback({ type: "error", message: "Network error while deleting question." });
+      setFeedback({ type: "error", message: "network error while deleting question." });
     }
   };
 
@@ -351,7 +351,7 @@ export default function QuestionComposerPage({
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="retro-window p-6 text-center max-w-xs w-full">
           <div className="retro-sunken-dark p-3 font-mono text-xs text-emerald-400">
-            LOADING QUESTION COMPOSER...
+            loading question composer...
           </div>
         </div>
       </div>
@@ -371,10 +371,10 @@ export default function QuestionComposerPage({
             className="retro-btn px-2.5 py-1 text-[11px] font-bold text-slate-900 inline-flex items-center gap-1 hover:bg-slate-100"
           >
             <ArrowLeft className="h-3 w-3" />
-            Studio
+            studio
           </Link>
-          <span className="text-xs sm:text-sm font-black text-white uppercase tracking-tight">
-            {exam.title} <span className="font-mono text-sky-200">[{exam.accessCode}]</span>
+          <span className="text-xs sm:text-sm font-black text-white tracking-tight">
+            {exam.title.toLowerCase()} <span className="font-mono text-sky-200">[{exam.accessCode.toLowerCase()}]</span>
           </span>
         </div>
 
@@ -384,7 +384,7 @@ export default function QuestionComposerPage({
             className="retro-btn-cyan px-2.5 py-1 text-[11px] inline-flex items-center gap-1 font-bold"
           >
             <Shield className="h-3.5 w-3.5" />
-            Proctor
+            proctor
           </Link>
         </div>
       </header>
@@ -395,16 +395,16 @@ export default function QuestionComposerPage({
         <aside className="retro-window w-full md:w-80 shrink-0 p-3 flex flex-col select-none">
           {/* Header Action */}
           <div className="flex items-center justify-between pb-2 mb-2 border-b-2 border-slate-300">
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-800">
-              Categories &amp; Channels
+            <span className="text-[11px] font-black tracking-wider text-slate-800">
+              categories &amp; channels
             </span>
             <button
               type="button"
               onClick={() => setIsSectionModalOpen(true)}
               className="retro-btn px-2 py-0.5 text-[10px] font-bold inline-flex items-center gap-1 hover:bg-slate-100"
-              title="Add Subject Category"
+              title="add subject category"
             >
-              <Plus className="h-3 w-3" /> Category
+              <Plus className="h-3 w-3" /> category
             </button>
           </div>
 
@@ -456,7 +456,7 @@ export default function QuestionComposerPage({
                         <span className="text-sm shrink-0 leading-none">{emoji}</span>
                         <span className="text-slate-400 font-light">|</span>
                         <span className="truncate tracking-tight font-bold text-slate-900">
-                          {sec.title}
+                          {sec.title.toLowerCase()}
                         </span>
                         <ChevronDown
                           className={`h-3.5 w-3.5 text-slate-600 transition-transform duration-150 shrink-0 ${
@@ -477,7 +477,7 @@ export default function QuestionComposerPage({
                               startDraftInSection(sec.id);
                             }}
                             className="retro-btn p-0.5 text-slate-800"
-                            title={`Add question to ${sec.title}`}
+                            title={`add question to ${sec.title.toLowerCase()}`}
                           >
                             <Plus className="h-3 w-3" />
                           </button>
@@ -489,7 +489,7 @@ export default function QuestionComposerPage({
                               setEditingSectionTitle(sec.title);
                             }}
                             className="retro-btn p-0.5 text-slate-800"
-                            title="Rename"
+                            title="rename"
                           >
                             <Pencil className="h-3 w-3" />
                           </button>
@@ -501,9 +501,9 @@ export default function QuestionComposerPage({
                                 handleDeleteSection(sec.id, sec.title);
                               }}
                               className="retro-btn p-0.5 text-red-700 hover:bg-red-100"
-                              title="Delete"
+                              title="delete"
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           )}
                         </div>
@@ -531,7 +531,7 @@ export default function QuestionComposerPage({
                               #
                             </span>
                             <span className="font-bold shrink-0 text-[11px]">
-                              Q{idx + 1}
+                              q{idx + 1}
                             </span>
                             <span className="truncate flex-1">
                               {q.stem}
@@ -547,10 +547,10 @@ export default function QuestionComposerPage({
                             #
                           </span>
                           <span className="font-black text-emerald-800 shrink-0 text-[11px]">
-                            Q{sec.questions.length + 1}
+                            q{sec.questions.length + 1}
                           </span>
                           <span className="truncate flex-1 text-slate-800 font-semibold">
-                            {stem.trim() || "(Live draft...)"}
+                            {stem.trim() || "(live draft...)"}
                           </span>
                           <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
                         </div>
@@ -562,7 +562,7 @@ export default function QuestionComposerPage({
                           onClick={() => startDraftInSection(sec.id)}
                           className="retro-btn w-full text-left flex items-center gap-1 px-2 py-1 text-[11px] text-slate-600"
                         >
-                          <Plus className="h-3 w-3" /> Add first question
+                          <Plus className="h-3 w-3" /> add first question
                         </button>
                       )}
                     </div>
@@ -580,19 +580,19 @@ export default function QuestionComposerPage({
             <div className="retro-panel flex flex-wrap items-center justify-between gap-3 p-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-black text-slate-900 uppercase">
-                    {selectedQuestion ? `Editing Question` : `Compose New Question`}
+                  <h2 className="text-sm sm:text-base font-black text-slate-900">
+                    {selectedQuestion ? `editing question` : `compose new question`}
                   </h2>
                   {!selectedQuestion && (
                     <span className="retro-btn bg-emerald-100 text-emerald-900 px-2 py-0.5 text-[10px] font-black">
-                      ● LIVE DRAFT
+                      ● live draft
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-600">
-                  <span className="font-bold">CATEGORY:</span>
+                  <span className="font-bold">category:</span>
                   <span className="retro-sunken px-2 py-0.5 text-[11px] font-bold text-slate-800 bg-white">
-                    {activeEmoji} | {activeSection?.title || "None"}
+                    {activeEmoji} | {activeSection?.title.toLowerCase() || "none"}
                   </span>
                 </div>
               </div>
@@ -605,7 +605,7 @@ export default function QuestionComposerPage({
                     className="retro-btn text-red-700 hover:bg-red-100 px-3 py-1.5 text-xs font-bold inline-flex items-center gap-1"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete
+                    delete
                   </button>
                 )}
                 <button
@@ -613,7 +613,7 @@ export default function QuestionComposerPage({
                   onClick={() => handleNewQuestion(selectedSectionId)}
                   className="retro-btn px-3.5 py-1.5 text-xs font-bold"
                 >
-                  Clear Form
+                  clear form
                 </button>
                 <button
                   type="submit"
@@ -621,7 +621,7 @@ export default function QuestionComposerPage({
                   className="retro-btn-green px-5 py-1.5 text-xs sm:text-sm font-black inline-flex items-center gap-1.5"
                 >
                   <Save className="h-4 w-4" />
-                  {isSaving ? "Saving..." : selectedQuestion ? "Update Question" : "Save Question"}
+                  {isSaving ? "saving..." : selectedQuestion ? "update question" : "save question"}
                 </button>
               </div>
             </div>
@@ -646,18 +646,18 @@ export default function QuestionComposerPage({
 
             {/* Math Macro Toolbar */}
             <div className="retro-panel p-3">
-              <span className="block text-[10px] font-black uppercase text-slate-700 mb-1.5">
-                KaTeX Formula Shortcut Bar (Click to insert):
+              <span className="block text-[10px] font-black text-slate-700 mb-1.5">
+                katex formula shortcut bar (click to insert):
               </span>
               <div className="flex flex-wrap gap-1">
                 {[
-                  { label: "Fraction \\frac", macro: "$\\frac{a}{b}$" },
-                  { label: "Square Root \\sqrt", macro: "$\\sqrt{x}$" },
-                  { label: "Superscript x²", macro: "$x^2$" },
-                  { label: "Subscript x_i", macro: "$x_i$" },
-                  { label: "Integral \\int", macro: "$$\\int_{0}^{\\infty} f(x) dx$$" },
-                  { label: "Sum \\sum", macro: "$$\\sum_{i=1}^{n} x_i$$" },
-                  { label: "Matrix [M]", macro: "$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}$$" },
+                  { label: "fraction \\frac", macro: "$\\frac{a}{b}$" },
+                  { label: "square root \\sqrt", macro: "$\\sqrt{x}$" },
+                  { label: "superscript x²", macro: "$x^2$" },
+                  { label: "subscript x_i", macro: "$x_i$" },
+                  { label: "integral \\int", macro: "$$\\int_{0}^{\\infty} f(x) dx$$" },
+                  { label: "sum \\sum", macro: "$$\\sum_{i=1}^{n} x_i$$" },
+                  { label: "matrix [M]", macro: "$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}$$" },
                   { label: "α", macro: "$\\alpha$" },
                   { label: "β", macro: "$\\beta$" },
                   { label: "θ", macro: "$\\theta$" },
@@ -681,32 +681,32 @@ export default function QuestionComposerPage({
 
             {/* Question Stem Text Area */}
             <div className="retro-panel p-4">
-              <label className="block text-[11px] font-black uppercase text-slate-800 mb-1.5">
-                Question Stem (Supports LaTeX $formula$ or Markdown):
+              <label className="block text-[11px] font-black text-slate-800 mb-1.5">
+                question stem (supports latex $formula$ or markdown):
               </label>
               <textarea
                 rows={4}
                 value={stem}
                 onChange={(e) => setStem(e.target.value)}
-                placeholder="Type question stem here. E.g. Simplify $\frac{p + \sqrt{p^2-q^2}}{p - \sqrt{p^2-q^2}}$..."
+                placeholder="type question stem here. e.g. simplify $\frac{p + \sqrt{p^2-q^2}}{p - \sqrt{p^2-q^2}}$..."
                 className="retro-field w-full text-xs font-mono p-2.5"
               />
 
               {/* Real-Time Live KaTeX Preview */}
               <div className="mt-3 pt-3 border-t border-slate-300">
-                <span className="text-[10px] font-black uppercase text-slate-600 mb-1 flex items-center gap-1">
-                  <Eye className="h-3 w-3" /> Live Render Preview:
+                <span className="text-[10px] font-black text-slate-600 mb-1 flex items-center gap-1">
+                  <Eye className="h-3 w-3" /> live render preview:
                 </span>
                 <div className="retro-sunken bg-white p-3 min-h-[44px] text-xs sm:text-sm text-slate-900">
-                  <KaTeXRenderer content={stem || "Live formula preview will appear here..."} />
+                  <KaTeXRenderer content={stem || "live formula preview will appear here..."} />
                 </div>
               </div>
             </div>
 
             {/* Diagram URL Field */}
             <div className="retro-panel p-4">
-              <label className="block text-[11px] font-black uppercase text-slate-800 mb-1.5">
-                Diagram / Vector Graphic URL (Optional):
+              <label className="block text-[11px] font-black text-slate-800 mb-1.5">
+                diagram / vector graphic url (optional):
               </label>
               <input
                 type="text"
@@ -718,7 +718,7 @@ export default function QuestionComposerPage({
               {diagramUrl && (
                 <div className="retro-sunken mt-3 p-2 bg-slate-50 flex justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={diagramUrl} alt="Diagram preview" className="max-h-40 object-contain" />
+                  <img src={diagramUrl} alt="diagram preview" className="max-h-40 object-contain" />
                 </div>
               )}
             </div>
@@ -726,8 +726,8 @@ export default function QuestionComposerPage({
             {/* Options Manager */}
             <div className="retro-panel p-4">
               <div className="flex items-center justify-between mb-3 border-b border-slate-300 pb-2">
-                <label className="block text-[11px] font-black uppercase text-slate-800">
-                  Multiple Choice Options (Select radio to set correct key):
+                <label className="block text-[11px] font-black text-slate-800">
+                  multiple choice options (select radio to set correct key):
                 </label>
                 {options.length < 6 && (
                   <button
@@ -740,7 +740,7 @@ export default function QuestionComposerPage({
                     }
                     className="retro-btn px-2 py-0.5 text-[10px] font-bold inline-flex items-center gap-1"
                   >
-                    <Plus className="h-3 w-3" /> Add Choice
+                    <Plus className="h-3 w-3" /> add choice
                   </button>
                 )}
               </div>
@@ -765,11 +765,11 @@ export default function QuestionComposerPage({
                         )
                       }
                       className="h-4 w-4 text-emerald-700 cursor-pointer"
-                      title="Set as correct answer"
+                      title="set as correct answer"
                     />
 
                     <span className="retro-btn flex h-6 w-6 items-center justify-center text-xs font-black">
-                      {String.fromCharCode(65 + optIdx)}
+                      {String.fromCharCode(97 + optIdx)}
                     </span>
 
                     <input
@@ -781,7 +781,7 @@ export default function QuestionComposerPage({
                           prev.map((o, i) => (i === optIdx ? { ...o, text: val } : o))
                         );
                       }}
-                      placeholder={`Choice ${optIdx + 1} formula (e.g. $\\frac{p^2}{q^2}$)`}
+                      placeholder={`choice ${optIdx + 1} formula (e.g. $\\frac{p^2}{q^2}$)`}
                       className="retro-field flex-1 text-xs py-1"
                     />
 
@@ -798,7 +798,7 @@ export default function QuestionComposerPage({
                           setOptions((prev) => prev.filter((_, i) => i !== optIdx))
                         }
                         className="retro-btn p-1 text-red-700 hover:bg-red-100"
-                        title="Remove choice"
+                        title="remove choice"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -810,14 +810,14 @@ export default function QuestionComposerPage({
 
             {/* Explanation / Solution Note */}
             <div className="retro-panel p-4">
-              <label className="block text-[11px] font-black uppercase text-slate-800 mb-1.5">
-                Solution Explanation (Shown on Candidate Scorecard):
+              <label className="block text-[11px] font-black text-slate-800 mb-1.5">
+                solution explanation (shown on candidate scorecard):
               </label>
               <textarea
                 rows={3}
                 value={solutionExplanation}
                 onChange={(e) => setSolutionExplanation(e.target.value)}
-                placeholder="Step-by-step mathematical reasoning or physics derivation..."
+                placeholder="step-by-step mathematical reasoning or physics derivation..."
                 className="retro-field w-full text-xs p-2.5"
               />
             </div>
@@ -830,9 +830,9 @@ export default function QuestionComposerPage({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
           <div className="retro-window w-full max-w-md overflow-hidden">
             <div className="retro-titlebar">
-              <span className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <span className="text-xs font-bold tracking-wider flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                Add Category Channel
+                add category channel
               </span>
               <button
                 type="button"
@@ -845,7 +845,7 @@ export default function QuestionComposerPage({
 
             <div className="p-4 sm:p-5">
               <p className="text-xs text-slate-700 mb-3">
-                Select a subject preset, or enter a custom category name:
+                select a subject preset, or enter a custom category name:
               </p>
 
               {/* Presets Grid */}
@@ -868,15 +868,15 @@ export default function QuestionComposerPage({
 
               {/* Custom Category Input */}
               <div className="pt-3 border-t border-slate-300">
-                <label className="block text-[10px] font-bold uppercase text-slate-700 mb-1">
-                  Or Custom Channel Name:
+                <label className="block text-[10px] font-bold text-slate-700 mb-1">
+                  or custom channel name:
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={customSectionInput}
                     onChange={(e) => setCustomSectionInput(e.target.value)}
-                    placeholder="e.g. Updates, Social Science, Logic"
+                    placeholder="e.g. updates, social science, logic"
                     className="retro-field flex-1 text-xs py-1"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleCreateSection(customSectionInput);
@@ -888,7 +888,7 @@ export default function QuestionComposerPage({
                     disabled={!customSectionInput.trim()}
                     className="retro-btn-green px-4 py-1.5 text-xs font-bold disabled:opacity-50"
                   >
-                    Create
+                    create
                   </button>
                 </div>
               </div>
