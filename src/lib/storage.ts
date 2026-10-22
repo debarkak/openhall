@@ -96,32 +96,83 @@ export async function queueOfflineAttempt(
     const db = await getDB();
     if (db) {
       await db.add("offline_queue", payload);
+      return;
     }
   } catch {
-    // Fallback
+    // Fall through to localStorage when IndexedDB is unavailable.
+  }
+
+  try {
+    const key = `oh_queue_${payload.sessionId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    // The attempt record remains in the local attempts store when storage is blocked.
   }
 }
 
 export async function flushOfflineQueue(
-  sendFn: (payload: AttemptSubmissionPayload) => Promise<boolean>
+  sendFn: (payload: AttemptSubmissionPayload) => Promise<boolean>,
+  sessionId?: string
 ): Promise<number> {
+  let sentCount = 0;
   try {
     const db = await getDB();
-    if (!db) return 0;
-    const tx = db.transaction("offline_queue", "readwrite");
-    const all = await tx.store.getAll();
-    let sentCount = 0;
-    for (const item of all) {
-      const success = await sendFn(item);
-      if (success) {
-        await tx.store.delete(item.id);
+    if (db) {
+      const all = (await db.getAll("offline_queue")).filter((item) => !sessionId || item.sessionId === sessionId);
+      for (const item of all) {
+        const success = await sendFn(item);
+        if (!success) return sentCount;
+        await db.delete("offline_queue", item.id);
         sentCount++;
-      } else {
-        break; // Stop flushing if still offline
       }
     }
-    return sentCount;
   } catch {
-    return 0;
+    // Fall through to localStorage when IndexedDB is unavailable.
   }
+
+  try {
+    const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+      .filter((key): key is string => !!key && key.startsWith("oh_queue_"))
+      .sort();
+    for (const key of keys) {
+      const payload = JSON.parse(localStorage.getItem(key) || "null") as AttemptSubmissionPayload | null;
+      if (!payload || (sessionId && payload.sessionId !== sessionId)) continue;
+      let success = false;
+      try {
+        success = await sendFn(payload);
+      } catch {
+        success = false;
+      }
+      if (!success) break;
+      localStorage.removeItem(key);
+      sentCount++;
+    }
+  } catch {
+    return sentCount;
+  }
+  return sentCount;
+}
+
+export async function countOfflineAttempts(sessionId: string): Promise<number> {
+  let count = 0;
+  try {
+    const db = await getDB();
+    if (!db) throw new Error("IndexedDB is unavailable");
+    const queued = await db.getAll("offline_queue");
+    count = queued.filter((item) => item.sessionId === sessionId).length;
+  } catch {
+    // Continue counting the localStorage fallback queue.
+  }
+
+  try {
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith("oh_queue_")) continue;
+      const payload = JSON.parse(localStorage.getItem(key) || "null") as AttemptSubmissionPayload | null;
+      if (payload?.sessionId === sessionId) count++;
+    }
+  } catch {
+    return count;
+  }
+  return count;
 }

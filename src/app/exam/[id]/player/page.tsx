@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { KaTeXRenderer } from "@/components/katex/KaTeXRenderer";
 import { CircularProgressGauge } from "@/components/exam/CircularProgressGauge";
@@ -9,8 +9,14 @@ import { ActionControlBar } from "@/components/exam/ActionControlBar";
 import { SaveAttemptModal } from "@/components/exam/SaveAttemptModal";
 import { SubmissionSpinner } from "@/components/exam/SubmissionSpinner";
 import { useBrowserLockdown } from "@/lib/anticheat";
-import { persistAttemptLocally, getLocalAttempts } from "@/lib/storage";
-import { CandidateExamManifest, ItemStatus } from "@/lib/types";
+import {
+  countOfflineAttempts,
+  flushOfflineQueue,
+  getLocalAttempts,
+  persistAttemptLocally,
+  queueOfflineAttempt,
+} from "@/lib/storage";
+import { AttemptSubmissionPayload, CandidateExamManifest, ItemStatus } from "@/lib/types";
 import { Info, AlertTriangle, ShieldAlert, Maximize2, XCircle } from "lucide-react";
 import Link from "next/link";
 
@@ -50,6 +56,13 @@ export default function ExamPlayerPage() {
 
   // Server-authoritative timer countdown (seconds remaining)
   const [remainingSeconds, setRemainingSeconds] = useState<number>(5400);
+  const [isOnline, setIsOnline] = useState(true);
+  const [hasPendingSync, setHasPendingSync] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncRevision, setSyncRevision] = useState(0);
+  const syncInFlightRef = useRef(false);
+  const mountedRef = useRef(true);
+  const pendingSavesRef = useRef(new Set<Promise<void>>());
 
   // Browser Lockdown with Real-Time Fullscreen Enforcement and 3-Strike Disqualification
   const {
@@ -66,6 +79,114 @@ export default function ExamPlayerPage() {
     enabled: !isSubmitting && !!manifest,
     maxStrikes: 3,
   });
+
+  const syncAttemptToServer = useCallback((payload: AttemptSubmissionPayload) => {
+    const sync = async () => {
+      if (!navigator.onLine) {
+        await queueOfflineAttempt(payload);
+        if (mountedRef.current) {
+          setHasPendingSync(true);
+          setSyncRevision((revision) => revision + 1);
+        }
+        return;
+      }
+
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch(`/api/sessions/${payload.sessionId}/attempt`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+        if (response.ok) return;
+
+        await queueOfflineAttempt(payload);
+        if (mountedRef.current) {
+          setHasPendingSync(true);
+          setSyncRevision((revision) => revision + 1);
+        }
+      } catch {
+        await queueOfflineAttempt(payload);
+        if (mountedRef.current) {
+          setHasPendingSync(true);
+          setSyncRevision((revision) => revision + 1);
+        }
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    };
+
+    const task = sync();
+    pendingSavesRef.current.add(task);
+    void task.finally(() => pendingSavesRef.current.delete(task));
+    return task;
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateConnection = () => setIsOnline(navigator.onLine);
+    updateConnection();
+    window.addEventListener("online", updateConnection);
+    window.addEventListener("offline", updateConnection);
+    return () => {
+      window.removeEventListener("online", updateConnection);
+      window.removeEventListener("offline", updateConnection);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOnline || !manifest || syncInFlightRef.current) return;
+
+    syncInFlightRef.current = true;
+    setIsSyncing(true);
+
+    const synchronizeQueuedAttempts = async () => {
+      let remaining = 0;
+      try {
+        const queuedBeforeSync = await countOfflineAttempts(sessionId);
+        if (queuedBeforeSync === 0) {
+          if (mountedRef.current) setHasPendingSync(false);
+          return;
+        }
+
+        if (mountedRef.current) setHasPendingSync(true);
+        await flushOfflineQueue(async (payload) => {
+          try {
+            const response = await fetch(`/api/sessions/${payload.sessionId}/attempt`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            return response.ok;
+          } catch {
+            return false;
+          }
+        }, sessionId);
+
+        remaining = await countOfflineAttempts(sessionId);
+        if (mountedRef.current) setHasPendingSync(remaining > 0);
+      } finally {
+        syncInFlightRef.current = false;
+        if (mountedRef.current) setIsSyncing(false);
+      }
+
+      if (remaining > 0 && navigator.onLine && mountedRef.current) {
+        window.setTimeout(() => {
+          if (mountedRef.current) setSyncRevision((revision) => revision + 1);
+        }, 15000);
+      }
+    };
+
+    void synchronizeQueuedAttempts();
+  }, [isOnline, manifest, sessionId, syncRevision]);
 
   // 1. Fetch sanitized manifest on mount
   useEffect(() => {
@@ -134,6 +255,39 @@ export default function ExamPlayerPage() {
     setIsSubmitting(true);
 
     try {
+      if (activeQuestion && selectedOptionId) {
+        const finalAttempt: AttemptSubmissionPayload = {
+          sessionId,
+          questionId: activeQuestion.id,
+          optionId: selectedOptionId,
+          status: "ATTEMPTED_SAVED",
+          timestamp: new Date().toISOString(),
+        };
+        setAttempts((current) => ({
+          ...current,
+          [activeQuestion.id]: { optionId: selectedOptionId, status: "ATTEMPTED_SAVED" },
+        }));
+        await persistAttemptLocally(sessionId, activeQuestion.id, selectedOptionId, "ATTEMPTED_SAVED");
+        await syncAttemptToServer(finalAttempt);
+      }
+
+      await Promise.all(Array.from(pendingSavesRef.current));
+      await flushOfflineQueue(async (payload) => {
+        try {
+          const response = await fetch(`/api/sessions/${payload.sessionId}/attempt`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          return response.ok;
+        } catch {
+          return false;
+        }
+      }, sessionId);
+      if (await countOfflineAttempts(sessionId)) {
+        throw new Error("some answers are waiting to sync. reconnect, then retry your submission.");
+      }
+
       const res = await fetch(`/api/sessions/${sessionId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -148,11 +302,13 @@ export default function ExamPlayerPage() {
         setSubmissionError(data.error || "the exam could not be submitted. check your connection and retry.");
         setIsSubmitting(false);
       }
-    } catch {
-      setSubmissionError("the exam could not be submitted. check your connection and retry.");
+    } catch (error) {
+      setSubmissionError(error instanceof Error
+        ? error.message
+        : "the exam could not be submitted. check your connection and retry.");
       setIsSubmitting(false);
     }
-  }, [sessionId, isSubmitting, router]);
+  }, [sessionId, isSubmitting, router, activeQuestion, selectedOptionId, syncAttemptToServer]);
 
   // 3. High-precision authoritative countdown loop
   useEffect(() => {
@@ -187,17 +343,13 @@ export default function ExamPlayerPage() {
       [qId]: { optionId: selectedOptionId, status: newStatus },
     }));
     await persistAttemptLocally(sessionId, qId, selectedOptionId, newStatus);
-
-    // Debounced network dispatch
-    fetch(`/api/sessions/${sessionId}/attempt`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        questionId: qId,
-        optionId: selectedOptionId,
-        status: newStatus,
-      }),
-    }).catch(() => {});
+    void syncAttemptToServer({
+      sessionId,
+      questionId: qId,
+      optionId: selectedOptionId,
+      status: newStatus,
+      timestamp: new Date().toISOString(),
+    });
 
     // Advance to next question or next section
     if (currentQuestionIndex < activeSection.questions.length - 1) {
@@ -215,6 +367,7 @@ export default function ExamPlayerPage() {
     currentSectionIndex,
     manifest,
     isSubmitting,
+    syncAttemptToServer,
   ]);
 
   // 5. Deselect Handler
@@ -234,6 +387,13 @@ export default function ExamPlayerPage() {
         [qId]: { optionId: null, status: "VISITED_UNANSWERED" },
       }));
       await persistAttemptLocally(sessionId, qId, null, "VISITED_UNANSWERED");
+      void syncAttemptToServer({
+        sessionId,
+        questionId: qId,
+        optionId: null,
+        status: "VISITED_UNANSWERED",
+        timestamp: new Date().toISOString(),
+      });
     }
 
     // Advance forward
@@ -243,7 +403,7 @@ export default function ExamPlayerPage() {
       setCurrentSectionIndex((prev) => prev + 1);
       setCurrentQuestionIndex(0);
     }
-  }, [activeQuestion, activeSection, attempts, sessionId, currentQuestionIndex, currentSectionIndex, manifest]);
+  }, [activeQuestion, activeSection, attempts, sessionId, currentQuestionIndex, currentSectionIndex, manifest, syncAttemptToServer]);
 
   // 7. Palette Navigation with Guardrail Check
   const handlePaletteSelect = useCallback(
@@ -276,21 +436,18 @@ export default function ExamPlayerPage() {
       [qId]: { optionId: selectedOptionId, status: newStatus },
     }));
     await persistAttemptLocally(sessionId, qId, selectedOptionId, newStatus);
-
-    fetch(`/api/sessions/${sessionId}/attempt`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        questionId: qId,
-        optionId: selectedOptionId,
-        status: newStatus,
-      }),
-    }).catch(() => {});
+    void syncAttemptToServer({
+      sessionId,
+      questionId: qId,
+      optionId: selectedOptionId,
+      status: newStatus,
+      timestamp: new Date().toISOString(),
+    });
 
     setIsGuardrailOpen(false);
     setCurrentQuestionIndex(guardrailTargetIndex);
     setGuardrailTargetIndex(null);
-  }, [activeQuestion, guardrailTargetIndex, selectedOptionId, sessionId]);
+  }, [activeQuestion, guardrailTargetIndex, selectedOptionId, sessionId, syncAttemptToServer]);
 
   // Guardrail Modal Cancel: Discard provisional choice and jump
   const handleGuardrailCancel = useCallback(() => {
@@ -420,6 +577,26 @@ export default function ExamPlayerPage() {
         </div>
       </nav>
 
+      {(!isOnline || hasPendingSync || isSyncing) && (
+        <div
+          className={`mx-auto mt-3 flex w-[min(95%,80rem)] items-center gap-2 rounded border px-3 py-2 text-xs font-bold ${
+            !isOnline
+              ? "border-amber-400 bg-amber-50 text-amber-950"
+              : isSyncing
+              ? "border-sky-300 bg-sky-50 text-sky-950"
+              : "border-red-300 bg-red-50 text-red-950"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {!isOnline
+            ? "offline · answers are saved on this device and will sync when the connection returns"
+            : isSyncing
+            ? "syncing saved answers…"
+            : "some answers are waiting to sync · check your connection before submitting"}
+        </div>
+      )}
+
       {/* 3. Main Player Viewport */}
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col lg:flex-row gap-5 p-4 sm:p-6 pb-28 lg:pb-6">
         {submissionError && (
@@ -449,8 +626,8 @@ export default function ExamPlayerPage() {
                   section: {activeSection.title.toLowerCase()}
                 </span>
               </div>
-              <span className="retro-sunken px-2 py-0.5 text-xs font-mono font-bold text-slate-700">
-                marks: +4.0 / 0.0
+                <span className="retro-sunken px-2 py-0.5 text-xs font-mono font-bold text-slate-700">
+                marks: +{(activeQuestion.positiveMarks ?? manifest.positiveMarks).toFixed(1)} / -{(activeQuestion.negativePenalty ?? manifest.negativePenalty).toFixed(1)}
               </span>
             </div>
 
@@ -474,15 +651,37 @@ export default function ExamPlayerPage() {
             </div>
 
             {/* Radio Choice Options */}
-            <div className="space-y-2.5">
+            <div className="space-y-2.5" role="radiogroup" aria-label="answer options">
               {activeQuestion.options.map((option, optIdx) => {
                 const isSelected = selectedOptionId === option.id;
                 const letter = String.fromCharCode(97 + optIdx); // 'a', 'b', 'c', 'd'
                 return (
                   <div
                     key={option.id}
+                    role="radio"
+                    aria-checked={isSelected}
+                    aria-label={`answer ${letter}`}
+                    tabIndex={isSelected || (!selectedOptionId && optIdx === 0) ? 0 : -1}
                     onClick={() => setSelectedOptionId(option.id)}
-                    className={`flex items-center gap-3 p-3 cursor-pointer select-none rounded-md border transition-all ${
+                    onKeyDown={(event) => {
+                      const optionCount = activeQuestion.options.length;
+                      if (event.key === " " || event.key === "Enter") {
+                        event.preventDefault();
+                        setSelectedOptionId(option.id);
+                      } else if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+                        event.preventDefault();
+                        const next = activeQuestion.options[(optIdx + 1) % optionCount];
+                        setSelectedOptionId(next.id);
+                        document.getElementById(`answer-${next.id}`)?.focus();
+                      } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+                        event.preventDefault();
+                        const previous = activeQuestion.options[(optIdx - 1 + optionCount) % optionCount];
+                        setSelectedOptionId(previous.id);
+                        document.getElementById(`answer-${previous.id}`)?.focus();
+                      }
+                    }}
+                    id={`answer-${option.id}`}
+                    className={`flex w-full items-center gap-3 p-3 text-left cursor-pointer select-none rounded-md border transition-all ${
                       isSelected
                         ? "bg-gradient-to-r from-sky-100 via-sky-50 to-white border-sky-500 shadow-sm ring-1 ring-sky-500 font-bold"
                         : "retro-panel hover:bg-slate-100"
@@ -498,8 +697,14 @@ export default function ExamPlayerPage() {
                     </div>
 
                     {/* Option Text / Formula */}
-                    <div className="flex-1 text-xs sm:text-sm text-slate-900">
+                    <div className="min-w-0 flex-1 text-xs sm:text-sm text-slate-900">
                       <KaTeXRenderer content={option.text} />
+                      {option.imageUrl && (
+                        <div className="mt-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={option.imageUrl} alt={`illustration for answer ${letter}`} className="max-h-40 max-w-full object-contain" />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
