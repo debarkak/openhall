@@ -1,6 +1,7 @@
 .git
 .github
 .next
+uploads
 node_modules
 coverage
 dist

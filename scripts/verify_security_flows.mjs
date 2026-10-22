@@ -13,6 +13,7 @@ const databaseUrl = `file:${path.join(tempDir, "openhall.db")}`;
 const env = {
   ...process.env,
   DATABASE_URL: databaseUrl,
+  OPENHALL_UPLOAD_DIR: path.join(tempDir, "uploads"),
   SESSION_SECRET: randomBytes(32).toString("hex"),
   NODE_ENV: "development",
   NEXT_TELEMETRY_DISABLED: "1",
@@ -243,6 +244,22 @@ async function main() {
     assert.equal(result.response.status, 401, "admin API should reject anonymous requests");
     result = await request("/api/admin/exams", {}, candidateCookie);
     assert.equal(result.response.status, 403, "admin API should reject candidate accounts");
+    const uploadImage = async (cookie, bytes = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0])) => {
+      const form = new FormData();
+      form.append("file", new Blob([bytes], { type: "image/png" }), "diagram.png");
+      return request(`/api/admin/exams/${exam.id}/media`, { method: "POST", body: form }, cookie);
+    };
+    result = await uploadImage();
+    assert.equal(result.response.status, 401, "image uploads should reject anonymous requests");
+    result = await uploadImage(candidateCookie);
+    assert.equal(result.response.status, 403, "image uploads should reject candidate accounts");
+    result = await uploadImage(teacherCookie);
+    assert.equal(result.response.status, 201, "exam owner should upload a supported image");
+    const uploadedImage = await fetch(`${origin}${result.data.url}`);
+    assert.equal(uploadedImage.status, 200, "uploaded image should be available through the media route");
+    assert.equal(uploadedImage.headers.get("content-type"), "image/png");
+    result = await uploadImage(teacherCookie, Buffer.from("not a png"));
+    assert.equal(result.response.status, 415, "image uploads should validate file signatures");
     result = await request(`/api/admin/exams/${exam.id}/proctor`, {}, otherTeacherCookie);
     assert.equal(result.response.status, 403, "teachers should not read other teachers' proctor data");
     result = await request(`/api/admin/exams/${exam.id}/proctor`, {}, adminCookie);
@@ -300,6 +317,8 @@ async function main() {
       body: JSON.stringify({ stem: "a mutated question" }),
     }, teacherCookie);
     assert.equal(result.response.status, 409, "question content should lock after enrollment");
+    result = await uploadImage(teacherCookie);
+    assert.equal(result.response.status, 409, "exam image uploads should lock after enrollment");
     result = await request(`/api/admin/exams/${exam.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

@@ -11,11 +11,15 @@ services:
       - '3000:3000'
     environment:
       DATABASE_URL: file:/app/prisma/openhall.db
+      OPENHALL_UPLOAD_DIR: /app/uploads
       NODE_ENV: production
       PORT: 3000
       SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env before starting OpenHall}
+      INITIAL_TEACHER_PASSWORD: ${INITIAL_TEACHER_PASSWORD:?Set INITIAL_TEACHER_PASSWORD in .env before starting OpenHall}
+      INITIAL_STUDENT_PASSWORD: ${INITIAL_STUDENT_PASSWORD:?Set INITIAL_STUDENT_PASSWORD in .env before starting OpenHall}
     volumes:
       - openhall_data:/app/prisma
+      - openhall_uploads:/app/uploads
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:3000/api/health']
       interval: 30s
@@ -25,4 +29,6 @@ services:
 
 volumes:
   openhall_data:
+    driver: local
+  openhall_uploads:
     driver: local

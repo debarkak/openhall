@@ -48,6 +48,7 @@ auth.json
 
 # Uploaded candidate and exam assets
 public/uploads/
+uploads/
 
 # TypeScript cache
 *.tsbuildinfo

@@ -20,6 +20,7 @@ import {
   Sparkles,
   Copy,
   Image as ImageIcon,
+  Upload,
 } from "lucide-react";
 
 interface OptionItem {
@@ -105,6 +106,7 @@ export default function QuestionComposerPage() {
   const [stem, setStem] = useState("");
   const [diagramUrl, setDiagramUrl] = useState("");
   const [showDiagramInput, setShowDiagramInput] = useState(false);
+  const [isUploadingDiagram, setIsUploadingDiagram] = useState(false);
   const [showFormulaBar, setShowFormulaBar] = useState(false);
   const [solutionExplanation, setSolutionExplanation] = useState("");
   const [showExplanation, setShowExplanation] = useState(true);
@@ -124,6 +126,7 @@ export default function QuestionComposerPage() {
   // Ref array for option inputs to enable fluid Google Forms Enter key hopping
   const optionInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const stemInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const diagramFileInputRef = useRef<HTMLInputElement | null>(null);
   const stemSelectionRef = useRef({ start: 0, end: 0 });
 
   const loadExamDetail = useCallback(async (preserveSectionId?: string) => {
@@ -192,6 +195,37 @@ export default function QuestionComposerPage() {
       { orderIndex: 2, text: "", isCorrect: false },
       { orderIndex: 3, text: "", isCorrect: false },
     ]);
+  };
+
+  const handleDiagramUpload = async (file: File | undefined) => {
+    if (!file) return;
+    setIsUploadingDiagram(true);
+    setFeedback(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch(`/api/admin/exams/${examId}/media`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || typeof data.url !== "string") {
+        throw new Error(data.error || "image upload failed. try again.");
+      }
+
+      setDiagramUrl(data.url);
+      setShowDiagramInput(true);
+      setFeedback({ type: "success", message: "image uploaded. save the question to keep this attachment." });
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        message: error instanceof Error ? error.message : "image upload failed. try again.",
+      });
+    } finally {
+      setIsUploadingDiagram(false);
+      if (diagramFileInputRef.current) diagramFileInputRef.current.value = "";
+    }
   };
 
   const handleDuplicateQuestion = () => {
@@ -811,26 +845,55 @@ export default function QuestionComposerPage() {
                 {/* Collapsible Diagram URL Row */}
                 {showDiagramInput && (
                   <div className="retro-panel p-3 bg-slate-50/70 border border-slate-300 space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
                         <ImageIcon className="h-3.5 w-3.5 text-slate-500" />
-                        diagram / image url:
+                        diagram / image:
                       </label>
-                      {diagramUrl && (
+                      <div className="flex items-center gap-2">
+                        <input
+                          ref={diagramFileInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/gif,image/webp"
+                          className="sr-only"
+                          aria-label="choose a question image"
+                          onChange={(event) => void handleDiagramUpload(event.target.files?.[0])}
+                        />
                         <button
                           type="button"
-                          onClick={() => setDiagramUrl("")}
-                          className="text-[10px] text-red-600 hover:underline font-bold"
+                          onClick={() => diagramFileInputRef.current?.click()}
+                          disabled={isUploadingDiagram}
+                          className="retro-btn inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold"
                         >
-                          remove image
+                          <Upload className="h-3 w-3" />
+                          {isUploadingDiagram ? "uploading…" : "upload image"}
                         </button>
-                      )}
+                        {diagramUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setDiagramUrl("")}
+                            className="text-[10px] text-red-700 hover:underline font-bold"
+                          >
+                            remove image
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    <p
+                      className="retro-sunken p-2 text-center text-[10px] text-slate-600"
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        void handleDiagramUpload(event.dataTransfer.files?.[0]);
+                      }}
+                    >
+                      drop an image here, or paste an image url below · png, jpeg, gif, or webp · up to 5 mb
+                    </p>
                     <input
                       type="text"
                       value={diagramUrl}
                       onChange={(e) => setDiagramUrl(e.target.value)}
-                      placeholder="https://example.com/diagram.png or local upload url"
+                      placeholder="https://example.com/diagram.png"
                       className="retro-field w-full text-xs py-1.5 px-2"
                     />
                     {diagramUrl && (
