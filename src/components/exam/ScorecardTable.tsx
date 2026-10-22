@@ -1,232 +1,187 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import confetti from "canvas-confetti";
-import { ArrowLeft, ChevronDown, CheckCircle2, XCircle, HelpCircle, BookOpen } from "lucide-react";
-import { EvaluationResult } from "@/lib/types";
+import { ArrowLeft, Check, CircleHelp, Printer, X } from "lucide-react";
 import { KaTeXRenderer } from "@/components/katex/KaTeXRenderer";
+import { PortalHeader } from "@/components/shell/PortalHeader";
+import type { EvaluationResult, QuestionReview } from "@/lib/types";
 
 interface ScorecardTableProps {
   result: EvaluationResult;
 }
 
-export const ScorecardTable: React.FC<ScorecardTableProps> = ({ result }) => {
-  const [showReview, setShowReview] = useState(false);
+function scoreLabel(score: number, maximum: number) {
+  if (maximum <= 0) return "no marks available";
+  const ratio = score / maximum;
+  if (ratio >= 0.9) return "excellent work";
+  if (ratio >= 0.7) return "strong result";
+  if (ratio >= 0.4) return "room to improve";
+  return "review the solutions";
+}
 
-  useEffect(() => {
-    try {
-      if (result.finalScore > 0) {
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.6 },
-        });
-      }
-    } catch {
-      // Ignored if canvas is unavailable
-    }
-  }, [result.finalScore]);
-
-  const metrics = [
-    { label: "total questions", value: result.totalQuestions },
-    { label: "max marks", value: result.maxMarks },
-    { label: "answered", value: result.questionsAttempted },
-    { label: "correct", value: result.correctResponses, highlight: "text-emerald-700 font-black" },
-    { label: "wrong", value: result.incorrectResponses, highlight: "text-red-700 font-black" },
-    { label: "unanswered", value: result.unattemptedQuestions },
-    {
-      label: "final score",
-      value: `${result.finalScore} / ${result.maxMarks}`,
-      highlight: "text-base font-black text-emerald-800",
-      isTotal: true,
-    },
-  ];
-
-  const hasReviews = result.questionReviews && result.questionReviews.length > 0;
+function ReviewCard({ review, forceOpen = false }: { review: QuestionReview; forceOpen?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const expanded = open || forceOpen;
+  const status = !review.isAttempted ? "not answered" : review.isCorrect ? "correct" : "incorrect";
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8">
-      {/* Scorecard Window */}
-      <div className="retro-window overflow-hidden">
-        {/* Title Bar */}
-        <div className="retro-titlebar">
-          <span className="text-xs font-bold tracking-wide">
-            test results — {result.examTitle.toLowerCase()}
-          </span>
-          <span className="retro-btn px-2 py-0.5 text-[10px] text-slate-800">
-            done
-          </span>
+    <article className="score-review">
+      <button
+        className="score-review__toggle"
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span className={`score-review__status score-review__status--${status.replace(" ", "-")}`}>
+          {review.isCorrect ? <Check size={14} /> : review.isAttempted ? <X size={14} /> : <CircleHelp size={14} />}
+          <span>{status}</span>
+        </span>
+        <span className="score-review__heading">
+          <strong>question {review.questionNumber}</strong>
+          <small>{review.sectionTitle.toLowerCase()}</small>
+        </span>
+        <span className="score-review__chevron" aria-hidden="true">{expanded ? "−" : "+"}</span>
+      </button>
+
+      {expanded && (
+        <div className="score-review__body">
+          <div className="score-review__stem"><KaTeXRenderer content={review.stem} /></div>
+          <div className="score-review__answers">
+            <div>
+              <span className="score-review__label">your answer</span>
+              <div className={review.isCorrect ? "score-answer score-answer--good" : "score-answer score-answer--plain"}>
+                {review.selectedOptionText ? <KaTeXRenderer content={review.selectedOptionText} /> : <span>no answer submitted</span>}
+              </div>
+            </div>
+            <div>
+              <span className="score-review__label">correct answer</span>
+              <div className="score-answer score-answer--good"><KaTeXRenderer content={review.correctOptionText} /></div>
+            </div>
+          </div>
+          {review.solutionExplanation && (
+            <div className="score-review__solution">
+              <span className="score-review__label">solution</span>
+              <KaTeXRenderer content={review.solutionExplanation} />
+            </div>
+          )}
         </div>
+      )}
+    </article>
+  );
+}
 
-        <div className="p-5">
-          {/* Top Banner */}
-          <div className="retro-sunken bg-white p-5 text-center mb-5">
-            <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-              {result.examTitle.toLowerCase()}
-            </h1>
-            <p className="mt-0.5 text-xs text-slate-500">
-              candidate: {(result.candidateName || "student candidate").toLowerCase()}
+export function ScorecardTable({ result }: ScorecardTableProps) {
+  const [showAll, setShowAll] = useState(false);
+  const [printMode, setPrintMode] = useState(false);
+  const reviews = result.questionReviews ?? [];
+  const accuracy = result.questionsAttempted > 0
+    ? Math.round((result.correctResponses / result.questionsAttempted) * 100)
+    : 0;
+  const scorePercent = result.maxMarks > 0
+    ? Math.max(0, Math.min(100, Math.round((result.finalScore / result.maxMarks) * 100)))
+    : 0;
+  const visibleReviews = showAll ? reviews : reviews.slice(0, 8);
+
+  useEffect(() => {
+    const finishPrint = () => setPrintMode(false);
+    window.addEventListener("afterprint", finishPrint);
+    return () => window.removeEventListener("afterprint", finishPrint);
+  }, []);
+
+  const printReport = () => {
+    setShowAll(true);
+    setPrintMode(true);
+    window.setTimeout(() => window.print(), 100);
+  };
+
+  return (
+    <div className="score-page">
+      <PortalHeader section="scorecard" showAuth={false}>
+        <Link href="/lobby" className="retro-btn px-3 py-2 text-xs font-bold">
+          <ArrowLeft size={14} className="mr-1.5" /> return to lobby
+        </Link>
+      </PortalHeader>
+
+      <main className="portal-main score-main">
+        <section className="score-heading">
+          <div>
+            <span className="portal-eyebrow">examination report</span>
+            <h1 className="portal-title">{result.examTitle}</h1>
+            <p className="portal-description">
+              results for {result.candidateName.toLowerCase()} · {result.totalQuestions} questions
             </p>
+          </div>
+          <button type="button" className="retro-btn score-print" onClick={printReport}>
+            <Printer size={15} /> print or save as pdf
+          </button>
+        </section>
 
-            {/* Score Box */}
-            <div className="mt-4 inline-block retro-sunken-dark px-6 py-2.5 text-center">
-              <span className="block text-[9px] font-bold tracking-wider text-slate-400">
-                score
-              </span>
-              <span className="text-2xl sm:text-3xl font-mono font-black text-emerald-400 tracking-wider">
-                {result.finalScore}
-                <span className="text-sm text-slate-400 font-normal"> / {result.maxMarks}</span>
-              </span>
+        <section className="score-overview" aria-label="exam result summary">
+          <div className="score-total">
+            <span className="score-total__eyebrow">final score</span>
+            <div className="score-total__value">
+              {result.finalScore}<span> / {result.maxMarks}</span>
             </div>
+            <p>{scoreLabel(result.finalScore, result.maxMarks)}</p>
+            <div className="score-meter" role="img" aria-label={`${scorePercent}% of available marks`}>
+              <span style={{ width: `${scorePercent}%` }} />
+            </div>
+            <small>{scorePercent}% of available marks</small>
           </div>
 
-          {/* Breakdown Table */}
-          <div className="retro-panel p-3 mb-5">
-            <div className="text-[11px] font-bold tracking-wider text-slate-700 pb-1.5 mb-2 border-b border-slate-300">
-              breakdown
+          <div className="score-stats">
+            <div className="score-stat score-stat--correct">
+              <span className="score-stat__icon"><Check size={15} /></span>
+              <span><strong>{result.correctResponses}</strong><small>correct</small></span>
             </div>
-
-            <div className="retro-sunken bg-white overflow-hidden">
-              <table className="w-full text-left border-collapse text-xs">
-                <tbody>
-                  {metrics.map((m, idx) => (
-                    <tr
-                      key={idx}
-                      className={`border-b border-slate-200 last:border-0 ${
-                        m.isTotal ? "bg-amber-50 font-bold" : ""
-                      }`}
-                    >
-                      <td className="px-3 py-2 font-medium text-slate-600">
-                        {m.label}
-                      </td>
-                      <td
-                        className={`px-3 py-2 text-right font-mono font-bold text-slate-900 ${
-                          m.highlight || ""
-                        }`}
-                      >
-                        {m.value}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="score-stat score-stat--incorrect">
+              <span className="score-stat__icon"><X size={15} /></span>
+              <span><strong>{result.incorrectResponses}</strong><small>incorrect</small></span>
+            </div>
+            <div className="score-stat score-stat--unanswered">
+              <span className="score-stat__icon"><CircleHelp size={15} /></span>
+              <span><strong>{result.unattemptedQuestions}</strong><small>unanswered</small></span>
+            </div>
+            <div className="score-stat score-stat--attempted">
+              <span className="score-stat__icon">%</span>
+              <span><strong>{accuracy}%</strong><small>accuracy · attempted</small></span>
             </div>
           </div>
+        </section>
 
-          {/* Optional Question & Solutions Review Viewer */}
-          {hasReviews && (
-            <div className="retro-panel p-3 mb-5">
-              <button
-                type="button"
-                onClick={() => setShowReview((prev) => !prev)}
-                className="w-full flex items-center justify-between text-[11px] font-bold tracking-wider text-slate-800 pb-1.5 border-b border-slate-300 cursor-pointer"
-              >
-                <span className="flex items-center gap-1.5">
-                  <BookOpen className="h-3.5 w-3.5 text-sky-700" />
-                  solutions &amp; derivations review ({result.questionReviews!.length})
-                </span>
-                <span className="retro-btn px-2 py-0.5 text-[10px] inline-flex items-center gap-1 font-bold">
-                  {showReview ? "hide solutions" : "review solutions"}
-                  <ChevronDown className={`h-3 w-3 transition-transform ${showReview ? "rotate-180" : ""}`} />
-                </span>
-              </button>
+        <section className="score-review-section">
+          <div className="portal-section-heading">
+            <div>
+              <h2>question review</h2>
+              <p>check your responses and read the solutions.</p>
+            </div>
+            <span className="portal-chip">{reviews.length} questions</span>
+          </div>
 
-              {showReview && (
-                <div className="space-y-3.5 mt-3">
-                  {result.questionReviews!.map((qr) => (
-                    <div key={qr.id} className="retro-sunken bg-white p-3.5 text-xs">
-                      {/* Question meta header */}
-                      <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="retro-btn px-2 py-0.5 font-bold text-slate-900">
-                            q{qr.questionNumber}
-                          </span>
-                          <span className="text-[11px] font-semibold text-slate-600">
-                            section: {qr.sectionTitle.toLowerCase()}
-                          </span>
-                        </div>
-
-                        {qr.isCorrect ? (
-                          <span className="retro-btn bg-emerald-100 text-emerald-950 px-2 py-0.5 text-[10px] font-bold inline-flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-700" />
-                            correct
-                          </span>
-                        ) : qr.isAttempted ? (
-                          <span className="retro-btn bg-red-100 text-red-950 px-2 py-0.5 text-[10px] font-bold inline-flex items-center gap-1">
-                            <XCircle className="h-3 w-3 text-red-700" />
-                            incorrect
-                          </span>
-                        ) : (
-                          <span className="retro-btn bg-slate-200 text-slate-700 px-2 py-0.5 text-[10px] font-bold inline-flex items-center gap-1">
-                            <HelpCircle className="h-3 w-3 text-slate-500" />
-                            unattempted
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Question stem */}
-                      <div className="text-slate-900 font-semibold mb-2.5">
-                        <KaTeXRenderer content={qr.stem} />
-                      </div>
-
-                      {/* Answer Comparison */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2.5">
-                        <div className="retro-panel p-2">
-                          <span className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                            your choice:
-                          </span>
-                          <div className="text-slate-800">
-                            {qr.selectedOptionText ? (
-                              <KaTeXRenderer content={qr.selectedOptionText} />
-                            ) : (
-                              <span className="italic text-slate-400">no option picked</span>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="retro-panel p-2 bg-emerald-50 border-emerald-300">
-                          <span className="block text-[10px] font-bold text-emerald-900 mb-0.5">
-                            correct answer:
-                          </span>
-                          <div className="text-emerald-950 font-bold">
-                            <KaTeXRenderer content={qr.correctOptionText} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Solution explanation */}
-                      {qr.solutionExplanation && (
-                        <div className="retro-sunken bg-slate-50 p-2.5 border-t border-slate-200">
-                          <span className="block text-[10px] font-bold text-slate-700 mb-1">
-                            mathematical derivation &amp; reasoning:
-                          </span>
-                          <div className="text-slate-700 text-[11px] leading-relaxed">
-                            <KaTeXRenderer content={qr.solutionExplanation} />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+          {reviews.length === 0 ? (
+            <div className="portal-empty">
+              <div className="portal-empty__icon"><CircleHelp size={20} /></div>
+              <h2>question details are unavailable</h2>
+              <p>the score is saved, but this report does not include individual question reviews.</p>
+            </div>
+          ) : (
+            <div className="score-review-list">
+              {visibleReviews.map((review) => <ReviewCard key={review.id} review={review} forceOpen={printMode} />)}
+              {reviews.length > 8 && (
+                <button
+                  type="button"
+                  className="retro-btn score-show-more"
+                  aria-expanded={showAll}
+                  onClick={() => setShowAll((value) => !value)}
+                >
+                  {showAll ? "show fewer questions" : `show all ${reviews.length} questions`}
+                </button>
               )}
             </div>
           )}
-
-          {/* Navigation CTA */}
-          <div className="flex justify-center">
-            <Link
-              href="/lobby"
-              className="retro-btn-green px-6 py-2 text-xs font-bold inline-flex items-center gap-1.5"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              back to tests
-            </Link>
-          </div>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
-};
-
-export default ScorecardTable;
+}
