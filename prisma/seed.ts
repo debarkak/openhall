@@ -5,26 +5,39 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding OpenHall database with baseline 45-question examination...");
 
+  const existingExam = await prisma.exam.findUnique({
+    where: { accessCode: "OH-MOCK-09" },
+    select: { id: true },
+  });
+  if (existingExam) {
+    const existingSessions = await prisma.examSession.count({ where: { examId: existingExam.id } });
+    if (existingSessions > 0) {
+      throw new Error(
+        `Refusing to reseed OH-MOCK-09: it has ${existingSessions} candidate session(s).`
+      );
+    }
+  }
+
   // 1. Create or upsert Host / Teacher
   const host = await prisma.user.upsert({
-    where: { email: "teacher@openhall.internal" },
+    where: { email: "teacher@openhall.edu" },
     update: {},
     create: {
       id: "host_teacher",
-      email: "teacher@openhall.internal",
-      name: "Teacher Host",
+      email: "teacher@openhall.edu",
+      name: "teacher",
       role: "TEACHER",
     },
   });
 
   // 2. Create Candidate
   await prisma.user.upsert({
-    where: { email: "student@openhall.internal" },
+    where: { email: "student@openhall.edu" },
     update: {},
     create: {
       id: "cand_student",
-      email: "student@openhall.internal",
-      name: "Student Candidate",
+      email: "student@openhall.edu",
+      name: "student",
       role: "CANDIDATE",
     },
   });
@@ -32,7 +45,7 @@ async function main() {
   // 3. Create Baseline 45-Question Mock Exam
   const exam = await prisma.exam.upsert({
     where: { accessCode: "OH-MOCK-09" },
-    update: {},
+    update: { hostId: host.id },
     create: {
       id: "exam_mock_1",
       title: "Mock Test 1 - Grade 9",
@@ -50,13 +63,6 @@ async function main() {
 
   // Never rewrite a baseline exam after candidates have enrolled. Rebuilding
   // question rows would invalidate attempts and change the meaning of results.
-  const existingSessions = await prisma.examSession.count({ where: { examId: exam.id } });
-  if (existingSessions > 0) {
-    throw new Error(
-      `Refusing to reseed ${exam.accessCode}: it has ${existingSessions} candidate session(s).`
-    );
-  }
-
   // Re-running the seed is safe for an unused baseline exam and does not touch
   // sessions, attempts, telemetry, or records belonging to other exams.
   await prisma.section.deleteMany({ where: { examId: exam.id } });
