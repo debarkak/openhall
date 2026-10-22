@@ -52,12 +52,19 @@ async function runGoogleFormsStudioTest() {
                          pageText.includes('answer key:') &&
                          pageText.includes('add option') &&
                          pageText.includes('duplicate');
+    const keepsLiveDraftVisible = pageText.includes('(live draft...)') && pageText.includes(' draft');
 
     console.log('   Google Forms Question Card Structure Present:', hasFormsCard);
+    console.log('   Unsaved question draft stays visible:', keepsLiveDraftVisible);
     report.push({
       test: '1. Google Forms Card Layout',
       status: hasFormsCard ? 'PASS' : 'FAIL',
       details: 'Card header, question type dropdown, answer key, duplicate bar verified',
+    });
+    report.push({
+      test: '2. Live Draft Indicator',
+      status: keepsLiveDraftVisible ? 'PASS' : 'FAIL',
+      details: 'The current unsaved draft remains visible when no saved question is selected',
     });
 
     // 2. Test Math bar and Diagram toggles
@@ -76,7 +83,7 @@ async function runGoogleFormsStudioTest() {
     const hasToggles = toggledText.includes('click formula snippet') && toggledText.includes('diagram / image url');
     console.log('   Toggles expanded cleanly:', hasToggles);
     report.push({
-      test: '2. Math Palette & Diagram Toggles',
+      test: '3. Math Palette & Diagram Toggles',
       status: hasToggles ? 'PASS' : 'FAIL',
       details: 'Instant collapsible math snippet palette and image input preview',
     });
@@ -119,7 +126,7 @@ async function runGoogleFormsStudioTest() {
 
     const enterKeyPass = countAfterEnter === 5;
     report.push({
-      test: '3. Google Forms Enter Key Navigation',
+      test: '4. Google Forms Enter Key Navigation',
       status: enterKeyPass ? 'PASS' : 'FAIL',
       details: `Enter key hopped options and auto-added option #5 (count: ${countAfterEnter})`,
     });
@@ -148,7 +155,7 @@ async function runGoogleFormsStudioTest() {
     const duplicateSuccess = finalCardText.includes('question duplicated as a new draft');
     console.log('   Duplicate Question Feedback:', duplicateSuccess);
     report.push({
-      test: '4. Instant Question Duplication',
+      test: '5. Instant Question Duplication',
       status: duplicateSuccess ? 'PASS' : 'FAIL',
       details: 'Cloned question stem and choices into a fresh editable draft',
     });
