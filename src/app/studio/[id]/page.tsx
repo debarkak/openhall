@@ -87,6 +87,7 @@ export default function QuestionComposerPage() {
   const examId = params.id;
   const [exam, setExam] = useState<ExamDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Active section & question selection
   const [selectedSectionId, setSelectedSectionId] = useState<string>("");
@@ -102,7 +103,6 @@ export default function QuestionComposerPage() {
   const [customSectionInput, setCustomSectionInput] = useState("");
 
   // Question Form State (Google Forms style)
-  const [questionType, setQuestionType] = useState<"single_choice" | "multiple_choice">("single_choice");
   const [stem, setStem] = useState("");
   const [diagramUrl, setDiagramUrl] = useState("");
   const [showDiagramInput, setShowDiagramInput] = useState(false);
@@ -130,6 +130,7 @@ export default function QuestionComposerPage() {
   const stemSelectionRef = useRef({ start: 0, end: 0 });
 
   const loadExamDetail = useCallback(async (preserveSectionId?: string) => {
+    setLoadError(null);
     try {
       const res = await fetch(`/api/admin/exams/${examId}`);
       if (res.status === 401) {
@@ -141,15 +142,19 @@ export default function QuestionComposerPage() {
         window.location.assign("/lobby");
         return;
       }
-      if (res.ok) {
-        const data: ExamDetail = await res.json();
-        setExam(data);
-
-        const targetSecId = preserveSectionId || (data.sections.length > 0 ? data.sections[0].id : "");
-        setSelectedSectionId(targetSecId);
+      if (!res.ok) {
+        throw new Error("could not load this exam. check your connection and try again.");
       }
+      const data: ExamDetail = await res.json();
+      setExam(data);
+
+      const requestedSectionExists = data.sections.some((section) => section.id === preserveSectionId);
+      const targetSecId = requestedSectionExists
+        ? preserveSectionId as string
+        : data.sections[0]?.id || "";
+      setSelectedSectionId(targetSecId);
     } catch (err) {
-      console.error("failed to load exam detail:", err);
+      setLoadError(err instanceof Error ? err.message : "could not load this exam.");
     } finally {
       setLoading(false);
     }
@@ -364,8 +369,9 @@ export default function QuestionComposerPage() {
     try {
       const res = await fetch(`/api/admin/sections/${secId}`, { method: "DELETE" });
       if (res.ok) {
-        await loadExamDetail();
-        handleNewQuestion();
+        const nextSectionId = exam?.sections.find((section) => section.id !== secId)?.id || "";
+        await loadExamDetail(nextSectionId);
+        handleNewQuestion(nextSectionId);
         setFeedback({ type: "success", message: `deleted category "${title}".` });
       } else {
         setFeedback({ type: "error", message: "failed to delete category." });
@@ -398,9 +404,9 @@ export default function QuestionComposerPage() {
       return;
     }
 
-    // Default first choice as correct if none selected
-    if (!filledOptions.some((o) => o.isCorrect)) {
-      filledOptions[0].isCorrect = true;
+    if (filledOptions.filter((option) => option.isCorrect).length !== 1) {
+      setFeedback({ type: "error", message: "choose exactly one correct answer using the circle beside it." });
+      return;
     }
 
     setIsSaving(true);
@@ -463,12 +469,29 @@ export default function QuestionComposerPage() {
     }
   };
 
-  if (loading || !exam) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="retro-window p-6 text-center max-w-xs w-full">
           <div className="retro-sunken-dark p-3 font-mono text-xs text-emerald-400">
             loading question composer...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!exam) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="retro-window max-w-md w-full p-5 text-center">
+          <div className="retro-sunken bg-white p-4">
+            <h1 className="text-sm font-black text-red-900">exam could not be opened</h1>
+            <p className="mt-2 text-xs text-slate-700">{loadError || "try loading the exam again."}</p>
+            <div className="mt-4 flex justify-center gap-2">
+              <button type="button" onClick={() => void loadExamDetail()} className="retro-btn-green px-4 py-2 text-xs font-bold">try again</button>
+              <Link href="/studio" className="retro-btn inline-flex px-4 py-2 text-xs font-bold">back to studio</Link>
+            </div>
           </div>
         </div>
       </div>
@@ -497,7 +520,7 @@ export default function QuestionComposerPage() {
             studio
           </Link>
           <span className="text-xs sm:text-sm font-black text-white tracking-tight">
-            {exam.title.toLowerCase()} <span className="font-mono text-sky-200">[{exam.accessCode.toLowerCase()}]</span>
+            {exam.title.toLowerCase()} <span className="font-mono text-sky-200">[code: {exam.accessCode.toLowerCase()}]</span>
           </span>
         </div>
 
@@ -745,8 +768,12 @@ export default function QuestionComposerPage() {
                       <span className="text-[11px] font-bold text-slate-500">in:</span>
                       <select
                         value={selectedSectionId}
-                        onChange={(e) => setSelectedSectionId(e.target.value)}
+                        onChange={(e) => {
+                          if (!selectedQuestion) setSelectedSectionId(e.target.value);
+                        }}
+                        disabled={!!selectedQuestion}
                         className="retro-field text-xs font-bold py-0.5 px-2 bg-white"
+                        title={selectedQuestion ? "duplicate this question to place a copy in another category" : "choose a category"}
                       >
                         {exam.sections.map((sec) => (
                           <option key={sec.id} value={sec.id}>
@@ -758,20 +785,6 @@ export default function QuestionComposerPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Google Forms Question Type Selector */}
-                    <div className="flex items-center gap-1">
-                      <select
-                        value={questionType}
-                        onChange={(e) => setQuestionType(
-                          e.target.value === "multiple_choice" ? "multiple_choice" : "single_choice"
-                        )}
-                        className="retro-field text-xs font-bold py-1 px-2.5 bg-slate-50"
-                      >
-                        <option value="single_choice">🔘 multiple choice (single answer)</option>
-                        <option value="multiple_choice">☑️ checkboxes (multiple answer)</option>
-                      </select>
-                    </div>
-
                     <span className="retro-sunken px-2 py-0.5 text-[11px] font-bold text-slate-600 bg-slate-50">
                       +{exam.positiveMarks.toFixed(1)} marks
                     </span>
@@ -950,7 +963,7 @@ export default function QuestionComposerPage() {
                         options:
                       </label>
                       <span className="text-[10px] text-slate-500 font-medium">
-                        click the circle to set the correct answer key. press enter to add next option.
+                        choose one correct answer. press enter to move to the next choice.
                       </span>
                     </div>
 
@@ -990,10 +1003,7 @@ export default function QuestionComposerPage() {
                           type="button"
                           onClick={() => {
                             setOptions((prev) =>
-                              prev.map((o, i) => ({
-                                ...o,
-                                isCorrect: questionType === "multiple_choice" ? (i === optIdx ? !o.isCorrect : o.isCorrect) : i === optIdx,
-                              }))
+                              prev.map((o, i) => ({ ...o, isCorrect: i === optIdx }))
                             );
                           }}
                           className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${

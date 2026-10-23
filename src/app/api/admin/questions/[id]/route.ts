@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireQuestionContentAccess } from "@/lib/authorization";
+import { parseQuestionInput } from "@/lib/questionInput";
 
 export const dynamic = "force-dynamic";
 
@@ -13,47 +14,31 @@ export async function PUT(
 
   try {
     const questionId = (await params).id;
-    const body = await request.json();
-    const { stem, diagramUrl, solutionExplanation, positiveMarks, negativePenalty, options } = body;
-
-    // Update question metadata
-    await prisma.question.update({
-      where: { id: questionId },
-      data: {
-        stem: stem || "Question stem",
-        diagramUrl: diagramUrl || null,
-        solutionExplanation: solutionExplanation || null,
-        positiveMarks: positiveMarks !== undefined ? parseFloat(positiveMarks) : undefined,
-        negativePenalty: negativePenalty !== undefined ? parseFloat(negativePenalty) : undefined,
-      },
-    });
-
-    // Update options if provided
-    if (Array.isArray(options)) {
-      // Cleanly replace options
-      await prisma.option.deleteMany({
-        where: { questionId },
-      });
-
-      for (let i = 0; i < options.length; i++) {
-        const opt = options[i];
-        if (opt.text && opt.text.trim()) {
-          await prisma.option.create({
-            data: {
-              questionId,
-              orderIndex: i,
-              text: opt.text.trim(),
-              imageUrl: opt.imageUrl || null,
-              isCorrect: !!opt.isCorrect,
-            },
-          });
-        }
-      }
+    const body = await request.json().catch(() => null);
+    const parsed = parseQuestionInput(body);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
 
-    const updated = await prisma.question.findUnique({
-      where: { id: questionId },
-      include: { options: true },
+    const updated = await prisma.$transaction(async (transaction) => {
+      await transaction.question.update({
+        where: { id: questionId },
+        data: {
+          stem: parsed.input.stem,
+          diagramUrl: parsed.input.diagramUrl,
+          solutionExplanation: parsed.input.solutionExplanation,
+        },
+      });
+      await transaction.option.deleteMany({ where: { questionId } });
+      for (const [orderIndex, option] of parsed.input.options.entries()) {
+        await transaction.option.create({
+          data: { questionId, orderIndex, ...option },
+        });
+      }
+      return transaction.question.findUnique({
+        where: { id: questionId },
+        include: { options: { orderBy: { orderIndex: "asc" } } },
+      });
     });
 
     return NextResponse.json(updated);
