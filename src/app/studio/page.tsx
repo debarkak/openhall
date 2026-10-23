@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   BookOpen,
@@ -31,13 +32,14 @@ interface ExamItem {
   _count: { sessions: number };
 }
 
-type ExamFilter = "all" | "live" | "upcoming";
+type ExamFilter = "all" | "live" | "draft";
 
 function questionCount(exam: ExamItem) {
   return exam.sections.reduce((total, section) => total + section.questions.length, 0);
 }
 
 export default function TeacherStudioPage() {
+  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [exams, setExams] = useState<ExamItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,8 +52,6 @@ export default function TeacherStudioPage() {
   const [filter, setFilter] = useState<ExamFilter>("all");
   const [newTitle, setNewTitle] = useState("");
   const [newDuration, setNewDuration] = useState("90");
-  const [newStatus, setNewStatus] = useState<"ACTIVE" | "UPCOMING">("ACTIVE");
-  const [newCode, setNewCode] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
 
   const loadExams = useCallback(async () => {
@@ -102,7 +102,7 @@ export default function TeacherStudioPage() {
   const counts = useMemo(() => ({
     all: exams.length,
     live: exams.filter((exam) => exam.isLive).length,
-    upcoming: exams.filter((exam) => !exam.isLive).length,
+    draft: exams.filter((exam) => !exam.isLive).length,
     questions: exams.reduce((total, exam) => total + questionCount(exam), 0),
     candidates: exams.reduce((total, exam) => total + exam._count.sessions, 0),
   }), [exams]);
@@ -111,7 +111,7 @@ export default function TeacherStudioPage() {
     const normalizedQuery = query.trim().toLowerCase();
     return exams.filter((exam) => {
       if (filter === "live" && !exam.isLive) return false;
-      if (filter === "upcoming" && exam.isLive) return false;
+      if (filter === "draft" && exam.isLive) return false;
       if (!normalizedQuery) return true;
       return [exam.title, exam.accessCode, ...exam.sections.map((section) => section.title)]
         .some((value) => value.toLowerCase().includes(normalizedQuery));
@@ -130,8 +130,6 @@ export default function TeacherStudioPage() {
         body: JSON.stringify({
           title: newTitle.trim(),
           durationSeconds: Number(newDuration) * 60,
-          accessCode: newCode.trim() || undefined,
-          isLive: newStatus === "ACTIVE",
         }),
       });
       const data = await response.json().catch(() => null);
@@ -147,12 +145,11 @@ export default function TeacherStudioPage() {
       }
       if (!response.ok) throw new Error(data?.error || "the exam could not be created.");
 
+      if (!data?.id) throw new Error("the exam was created, but the editor could not be opened.");
       setIsCreateOpen(false);
       setNewTitle("");
-      setNewCode("");
       setNewDuration("90");
-      setNewStatus("ACTIVE");
-      await loadExams();
+      router.push(`/studio/${data.id}`);
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : "the exam could not be created.");
     } finally {
@@ -169,7 +166,20 @@ export default function TeacherStudioPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isLive: !exam.isLive }),
       });
-      if (!response.ok) throw new Error("could not update this exam's availability.");
+      const data = await response.json().catch(() => null);
+      if (response.status === 401) {
+        const destination = `${window.location.pathname}${window.location.search}`;
+        window.location.assign(`/login?redirect=${encodeURIComponent(destination)}`);
+        return;
+      }
+      if (response.status === 403) {
+        window.location.assign("/lobby");
+        return;
+      }
+      if (!response.ok) {
+        const details = Array.isArray(data?.issues) ? ` ${data.issues.join("; ")}.` : "";
+        throw new Error(`${data?.error || "could not update this exam's availability."}${details}`);
+      }
       setExams((current) => current.map((item) =>
         item.id === exam.id ? { ...item, isLive: !exam.isLive } : item
       ));
@@ -260,7 +270,7 @@ export default function TeacherStudioPage() {
 
           <div className="studio-registry__tools">
             <div className="portal-tabs" aria-label="filter exams">
-              {(["all", "live", "upcoming"] as const).map((value) => (
+              {(["all", "live", "draft"] as const).map((value) => (
                 <button
                   key={value}
                   type="button"
@@ -322,9 +332,9 @@ export default function TeacherStudioPage() {
                     <div className="studio-exam-card__top">
                       <span className={`portal-chip ${exam.isLive ? "portal-chip--live" : ""}`}>
                         <span className="studio-status-dot" aria-hidden="true" />
-                        {exam.isLive ? "live" : "upcoming"}
+                        {exam.isLive ? "published" : "draft"}
                       </span>
-                      <span className="studio-exam-code">{exam.accessCode}</span>
+                      <span className="studio-exam-code" aria-label={`exam code ${exam.accessCode}`}>code: {exam.accessCode}</span>
                       <button
                         type="button"
                         className="studio-icon-button"
@@ -332,7 +342,7 @@ export default function TeacherStudioPage() {
                         disabled={isBusy}
                         aria-label={`${exam.isLive ? "unpublish" : "publish"} ${exam.title}`}
                         aria-pressed={exam.isLive}
-                        title={exam.isLive ? "remove from candidate lobby" : "show in candidate lobby"}
+                        title={exam.isLive ? "hide from candidates" : "publish after adding questions"}
                       >
                         {isBusy ? <span className="studio-spinner" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -434,39 +444,8 @@ export default function TeacherStudioPage() {
                     <small>minutes</small>
                   </div>
                 </label>
-                <label className="studio-form-field">
-                  <span>access code <small>optional</small></span>
-                  <input
-                    className="retro-field w-full px-3 py-2.5 font-mono text-sm"
-                    value={newCode}
-                    onChange={(event) => setNewCode(event.target.value)}
-                    placeholder="e.g. physics-01"
-                    maxLength={40}
-                  />
-                </label>
+                <p className="studio-create-note">starts as a draft. add questions, then publish it from the exam studio.</p>
               </div>
-
-              <fieldset className="studio-status-select">
-                <legend>candidate access</legend>
-                <button
-                  type="button"
-                  aria-pressed={newStatus === "ACTIVE"}
-                  className={newStatus === "ACTIVE" ? "studio-status-option is-selected" : "studio-status-option"}
-                  onClick={() => setNewStatus("ACTIVE")}
-                >
-                  <span className="studio-status-dot" aria-hidden="true" />
-                  <span><b>available now</b><small>candidates can see this exam</small></span>
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={newStatus === "UPCOMING"}
-                  className={newStatus === "UPCOMING" ? "studio-status-option is-selected" : "studio-status-option"}
-                  onClick={() => setNewStatus("UPCOMING")}
-                >
-                  <span className="studio-status-dot studio-status-dot--muted" aria-hidden="true" />
-                  <span><b>keep hidden</b><small>publish it when the paper is ready</small></span>
-                </button>
-              </fieldset>
 
               {createError && <p className="portal-alert" role="alert">{createError}</p>}
 
@@ -528,6 +507,7 @@ export default function TeacherStudioPage() {
         .studio-form-field { display: grid; gap: 7px; color: #415d72; font-size: 11px; font-weight: 800; }
         .studio-form-field small { color: #7c8d99; font-size: 10px; font-weight: 600; }
         .studio-form-row { display: grid; grid-template-columns: .75fr 1fr; gap: 12px; }
+        .studio-create-note { align-self: center; color: #718595; font-size: 11px; line-height: 1.5; }
         .studio-input-suffix { position: relative; }
         .studio-input-suffix input { padding-right: 61px; }
         .studio-input-suffix small { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); pointer-events: none; }
