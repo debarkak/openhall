@@ -9,11 +9,19 @@ the project is still being built. it is useful to run and try, but browser check
 - create exams, sections, and multiple-choice questions
 - write questions and explanations with LaTeX, and attach diagrams
 - upload question images to local storage
-- set exam duration, answer marks, penalties, and whether an exam is live
-- save answers while a candidate works, including a local queue during a network interruption
+- set exam duration, answer marks, and penalties, then publish or hide a paper
+- save answers while a candidate works, queue offline changes, and flag answers that miss submission
 - grade submitted exams on the server and show a results report
 - record browser focus and fullscreen events for the proctor screen
 - run on one server with SQLite or in the included Docker setup
+
+## the usual exam flow
+
+1. sign in as a teacher and create an exam. it opens as a hidden draft in the question editor.
+2. add questions, answer choices, and one correct answer for each question. empty subject sections are fine.
+3. return to the teacher studio and publish the exam. openhall checks the questions before candidates can see it.
+4. candidates start from the lobby. reading the instructions does not start the timer; the timer begins when the exam player opens.
+5. candidates can revisit questions, clear saved answers, and submit when they are done. results are available after submission.
 
 ## current limits
 
@@ -21,7 +29,7 @@ the project is still being built. it is useful to run and try, but browser check
 - live proctor updates use an in-memory event stream. run one app process for a class; multiple replicas need a shared event service before they can share live updates.
 - SQLite is the database configured by the current Prisma schema. PostgreSQL setup is not supported yet.
 - uploaded images are stored on the app host. back up the uploads directory along with the database.
-- the browser can keep answers queued while offline, but candidates need to reconnect and let the queue sync before submitting.
+- offline answers are best-effort. if the queue cannot sync before submission, the exam still finishes and the scorecard explains that it used the answers saved online.
 
 ## run it locally
 
@@ -45,7 +53,7 @@ npm run dev
 
 open [http://localhost:3000](http://localhost:3000).
 
-the seed creates a 45-question sample exam with access code `OH-MOCK-09`. it is safe to run again only while that sample exam has no candidate sessions. reseeding replaces the sample exam's sections and questions. it does not reset the rest of the database.
+the seed creates a 45-question sample exam with exam code `OH-MOCK-09`. it is safe to run again only while that sample exam has no candidate sessions. reseeding replaces the sample exam's sections and questions. it does not reset the rest of the database.
 
 in development, the credential script uses `teacher123` and `student123` if you have not set `INITIAL_TEACHER_PASSWORD` and `INITIAL_STUDENT_PASSWORD` in `.env`.
 
