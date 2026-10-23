@@ -148,7 +148,7 @@ async function main() {
       },
     },
   });
-  const question = exam.sections[0].questions[0];
+  let question = exam.sections[0].questions[0];
   const foreignExam = await prisma.exam.create({
     data: {
       title: "other validation exam",
@@ -162,7 +162,12 @@ async function main() {
           questions: {
             create: {
               stem: "foreign question",
-              options: { create: [{ text: "foreign option", isCorrect: true }] },
+              options: {
+                create: [
+                  { text: "foreign option", isCorrect: true, orderIndex: 0 },
+                  { text: "another foreign option", isCorrect: false, orderIndex: 1 },
+                ],
+              },
             },
           },
         },
@@ -271,10 +276,76 @@ async function main() {
     result = await request("/api/admin/exams", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "invalid live exam", isLive: true }),
+    }, teacherCookie);
+    assert.equal(result.response.status, 400, "new exams should be created as drafts before publishing");
+
+    result = await request("/api/admin/exams", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: "teacher-owned validation exam" }),
     }, teacherCookie);
-    assert.equal(result.response.status, 200);
+    assert.equal(result.response.status, 201);
     assert.equal(result.data.hostId, teacher.id, "new exams should belong to the signed-in teacher");
+    assert.equal(result.data.isLive, false, "new exams should stay hidden until they are ready");
+    const draftExam = result.data;
+
+    result = await request(`/api/admin/exams/${draftExam.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isLive: true }),
+    }, teacherCookie);
+    assert.equal(result.response.status, 409, "empty exams must not be published");
+
+    result = await request(`/api/exams/${draftExam.id}/enroll`, { method: "POST" }, candidateCookie);
+    assert.equal(result.response.status, 403, "candidates must not enroll in a hidden draft");
+    let lobbyResponse = await request("/lobby", {}, candidateCookie);
+    assert.equal((await lobbyResponse.response.text()).includes("teacher-owned validation exam"), false, "hidden drafts must not appear in the candidate lobby");
+
+    result = await request(`/api/admin/sections/${draftExam.sections[0].id}/questions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        stem: "invalid question",
+        options: [{ text: "only one choice", isCorrect: true }],
+      }),
+    }, teacherCookie);
+    assert.equal(result.response.status, 400, "questions need at least two choices");
+
+    result = await request(`/api/admin/sections/${draftExam.sections[0].id}/questions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        stem: "teacher-owned validation question",
+        options: [
+          { text: "correct", isCorrect: true },
+          { text: "also marked correct", isCorrect: true },
+        ],
+      }),
+    }, teacherCookie);
+    assert.equal(result.response.status, 400, "single-answer exams must have exactly one answer key");
+
+    result = await request(`/api/admin/sections/${draftExam.sections[0].id}/questions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        stem: "teacher-owned validation question",
+        options: [
+          { text: "correct", isCorrect: true },
+          { text: "incorrect", isCorrect: false },
+        ],
+      }),
+    }, teacherCookie);
+    assert.equal(result.response.status, 201, "a complete single-answer question should save");
+
+    result = await request(`/api/admin/exams/${draftExam.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isLive: true }),
+    }, teacherCookie);
+    assert.equal(result.response.status, 200, "a complete exam should publish");
+    lobbyResponse = await request("/lobby", {}, candidateCookie);
+    assert.equal((await lobbyResponse.response.text()).includes("teacher-owned validation exam"), true, "published exams should appear in the candidate lobby");
     result = await request(`/api/proctor/${exam.id}/stream`, {}, candidateCookie);
     assert.equal(result.response.status, 403, "proctor stream should reject candidate accounts");
     result = await request(`/api/proctor/${exam.id}/stream`, {}, otherTeacherCookie);
@@ -306,6 +377,10 @@ async function main() {
     assert.match(decoder.decode(liveEvent.value), /CANDIDATE_ENROLLED/, "enrollment should reach live proctors");
     streamController.abort();
 
+    const pendingEnrollment = await request(`/api/exams/${exam.id}/enroll`, { method: "POST" }, secondCandidateCookie);
+    assert.equal(pendingEnrollment.response.status, 200, "a second candidate can open the pre-flight page while the exam is live");
+    const pendingSessionId = pendingEnrollment.data.sessionId;
+
     const storedSession = await prisma.examSession.findUnique({ where: { id: sessionId } });
     assert.equal(storedSession.status, "NOT_STARTED");
     assert.equal(storedSession.startedAt, null);
@@ -314,30 +389,32 @@ async function main() {
     result = await request(`/api/admin/questions/${question.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stem: "a mutated question" }),
+      body: JSON.stringify({
+        stem: "what is 2 + 2? (updated before start)",
+        diagramUrl: null,
+        solutionExplanation: null,
+        options: question.options.map(({ text, imageUrl, isCorrect }) => ({ text, imageUrl, isCorrect })),
+      }),
     }, teacherCookie);
-    assert.equal(result.response.status, 409, "question content should lock after enrollment");
+    assert.equal(result.response.status, 200, "teachers should be able to fix a paper before a candidate starts it");
+    question = await prisma.question.findUnique({
+      where: { id: question.id },
+      include: { options: { orderBy: { orderIndex: "asc" } } },
+    });
     result = await uploadImage(teacherCookie);
-    assert.equal(result.response.status, 409, "exam image uploads should lock after enrollment");
+    assert.equal(result.response.status, 201, "paper images should remain editable before a candidate starts");
     result = await request(`/api/admin/exams/${exam.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "rewritten exam" }),
+      body: JSON.stringify({ title: "editable before start" }),
     }, teacherCookie);
-    assert.equal(result.response.status, 409, "exam content should lock after enrollment");
-    result = await request(`/api/admin/exams/${exam.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isLive: false }),
-    }, teacherCookie);
-    assert.equal(result.response.status, 200, "teachers should still be able to unpublish an exam");
-    result = await request(`/api/admin/exams/${exam.id}`, { method: "DELETE" }, teacherCookie);
-    assert.equal(result.response.status, 409, "candidate history must prevent exam deletion");
+    assert.equal(result.response.status, 200, "exam settings should remain editable before a candidate starts");
 
     result = await request(`/api/sessions/${sessionId}/manifest?preview=1`, {}, candidateCookie);
     assert.equal(result.response.status, 200, "candidate should preview exam instructions");
     assert.equal(result.data.positiveMarks, 2.5);
     assert.equal(result.data.negativePenalty, 0.5);
+    assert.equal(result.data.integrityStrikes, 0);
     assert.equal("isCorrect" in result.data.sections[0].questions[0].options[0], false, "candidate manifests must not reveal answer keys");
     const previewSession = await prisma.examSession.findUnique({ where: { id: sessionId } });
     assert.equal(previewSession.status, "NOT_STARTED", "instructions preview must not consume exam time");
@@ -359,6 +436,33 @@ async function main() {
     const startedSession = await prisma.examSession.findUnique({ where: { id: sessionId } });
     assert.equal(startedSession.status, "IN_PROGRESS");
     assert.ok(startedSession.deadline instanceof Date);
+
+    result = await request(`/api/admin/questions/${question.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stem: "a mutated question" }),
+    }, teacherCookie);
+    assert.equal(result.response.status, 409, "question content should lock after a candidate starts");
+    result = await uploadImage(teacherCookie);
+    assert.equal(result.response.status, 409, "exam image uploads should lock after a candidate starts");
+    result = await request(`/api/admin/exams/${exam.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "rewritten exam" }),
+    }, teacherCookie);
+    assert.equal(result.response.status, 409, "exam content should lock after a candidate starts");
+    result = await request(`/api/admin/exams/${exam.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isLive: false }),
+    }, teacherCookie);
+    assert.equal(result.response.status, 200, "teachers should still be able to unpublish an exam");
+    result = await request(`/api/admin/exams/${exam.id}`, { method: "DELETE" }, teacherCookie);
+    assert.equal(result.response.status, 409, "candidate history must prevent exam deletion");
+    result = await request(`/api/exams/${exam.id}/enroll`, { method: "POST" }, secondCandidateCookie);
+    assert.equal(result.response.status, 403, "a pre-flight session must not start after its exam is hidden");
+    result = await request(`/api/sessions/${pendingSessionId}/manifest?preview=1`, {}, secondCandidateCookie);
+    assert.equal(result.response.status, 403, "hidden exams must reject direct pre-flight links");
 
     result = await request(`/api/sessions/${sessionId}/attempt`, {
       method: "POST",
@@ -384,6 +488,18 @@ async function main() {
     result = await request(`/api/sessions/${sessionId}/scorecard`, {}, candidateCookie);
     assert.equal(result.response.status, 403, "answer keys must stay hidden before submission");
 
+    result = await request(`/api/sessions/${sessionId}/attempt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ questionId: question.id, optionId: null, status: "VISITED_UNANSWERED" }),
+    }, candidateCookie);
+    assert.equal(result.response.status, 200, "candidates should be able to clear a saved answer");
+    const clearedAnswer = await prisma.questionAttempt.findUnique({
+      where: { sessionId_questionId: { sessionId, questionId: question.id } },
+    });
+    assert.equal(clearedAnswer.optionId, null, "clearing an answer should remove the saved option");
+    assert.equal(clearedAnswer.status, "VISITED_UNANSWERED");
+
     result = await request(`/api/sessions/${sessionId}/telemetry`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -398,6 +514,10 @@ async function main() {
     }, candidateCookie);
     assert.equal(result.response.status, 200, "valid telemetry should be recorded");
 
+    result = await request(`/api/sessions/${sessionId}/manifest`, {}, candidateCookie);
+    assert.equal(result.response.status, 200);
+    assert.equal(result.data.integrityStrikes, 1, "focus strikes should survive reloading the exam player");
+
     const resumed = await request(`/api/exams/${exam.id}/enroll`, { method: "POST" }, candidateCookie);
     assert.equal(resumed.response.status, 200, "existing candidates should retain their session after unpublish");
     assert.equal(resumed.data.sessionId, sessionId);
@@ -411,13 +531,25 @@ async function main() {
     }, candidateCookie);
     assert.equal(result.response.status, 200, "candidate should save a valid answer before submission");
 
+    await prisma.examSession.update({
+      where: { id: sessionId },
+      data: { deadline: new Date(Date.now() - 10000) },
+    });
+    result = await request(`/api/sessions/${sessionId}/attempt`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ questionId: question.id, optionId: question.options[1].id, status: "ATTEMPTED_SAVED" }),
+    }, candidateCookie);
+    assert.equal(result.response.status, 403, "new answers should be rejected after the exam deadline");
+    assert.equal(result.data.expired, true);
+
     result = await request(`/api/sessions/${sessionId}/submit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     }, candidateCookie);
-    assert.equal(result.response.status, 200, "candidate should submit the active exam");
-    assert.equal(result.data.result.finalScore, 2.5, "score should use the correct answer and configured marks");
+    assert.equal(result.response.status, 200, "candidate should still be able to finalize after the deadline");
+    assert.equal(result.data.result.finalScore, 2.5, "score should use the last answer saved before the deadline");
 
     result = await request(`/api/sessions/${sessionId}/submit`, {
       method: "POST",

@@ -1,8 +1,9 @@
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
 import path from 'path';
+import { resolveChromePath } from './browserSupport.mjs';
 
-const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const CHROME_PATH = resolveChromePath();
 const SCREENSHOT_DIR = path.resolve('samples', 'screenshots_test');
 
 if (!fs.existsSync(SCREENSHOT_DIR)) {
@@ -46,6 +47,12 @@ async function runEndToEndVerification() {
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '01_landing_gateway.png') });
     steps.push({ step: '1. Landing Page', status: hasSmallLettersLanding ? 'PASS' : 'WARN', details: 'All lowercase 2005 style' });
 
+    await page.goto('http://localhost:3000/login', { waitUntil: 'networkidle0' });
+    await page.type('#login-email', 'teacher@openhall.edu');
+    await page.type('#login-password', 'teacher123');
+    await page.click('button[type="submit"]');
+    await page.waitForFunction(() => window.location.pathname === '/studio', { timeout: 10000 });
+
     // -------------------------------------------------------------------------
     // STEP 2: Teacher Studio - Create New Exam Paper
     // -------------------------------------------------------------------------
@@ -68,37 +75,22 @@ async function runEndToEndVerification() {
     await page.type('input[placeholder*="physics midterm"]', examTitle);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '03_studio_create_modal.png') });
 
-    // Click "create test"
+    // Create the exam; new papers open directly as hidden drafts.
     await page.evaluate(() => {
       const btns = Array.from(document.querySelectorAll('button'));
-      const createBtn = btns.find((b) => b.textContent && b.textContent.trim() === 'create test');
+      const createBtn = btns.find((b) => b.textContent && b.textContent.trim() === 'create exam');
       if (createBtn) createBtn.click();
     });
-    await sleep(1500);
+    await page.waitForFunction(() => /^\/studio\/[^/]+$/.test(window.location.pathname), { timeout: 15000 });
 
-    // Verify newly created test card exists
-    const studioText = await page.evaluate(() => document.body.innerText);
-    const examCreated = studioText.includes(examTitle);
-    console.log(`   Exam "${examTitle}" appears in Studio:`, examCreated);
+    // Verify the new draft opens directly in its question editor.
+    const editorText = await page.evaluate(() => document.body.innerText);
+    const examCreated = editorText.includes(examTitle) && editorText.includes('draft');
+    console.log(`   Draft "${examTitle}" opened in its editor:`, examCreated);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '04_studio_exam_created.png') });
     steps.push({ step: '2. Create Exam in Studio', status: examCreated ? 'PASS' : 'FAIL', details: examTitle });
 
-    // Find "edit questions" button for this new exam
-    console.log('   Navigating to Question Composer for new exam...');
-    const editQuestionsUrl = await page.evaluate((title) => {
-      const cards = Array.from(document.querySelectorAll('.retro-panel'));
-      for (const card of cards) {
-        if (card.innerText.includes(title)) {
-          const link = card.querySelector('a[href*="/studio/"]');
-          return link ? link.getAttribute('href') : null;
-        }
-      }
-      return null;
-    }, examTitle);
-
-    if (!editQuestionsUrl) {
-      throw new Error(`Could not find "edit questions" link for ${examTitle}`);
-    }
+    const editQuestionsUrl = await page.evaluate(() => window.location.pathname);
 
     // -------------------------------------------------------------------------
     // STEP 3: Question Composer - Author Questions with LaTeX Formulas
@@ -183,10 +175,29 @@ async function runEndToEndVerification() {
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '09_composer_q2_saved.png') });
     steps.push({ step: '3. Question Composer (LaTeX + Categories)', status: 'PASS', details: 'Authored 2 questions in 2 sections' });
 
+    // Publish only after the paper has complete questions and answer keys.
+    await page.goto('http://localhost:3000/studio', { waitUntil: 'networkidle0' });
+    await page.evaluate((title) => {
+      const publishButton = Array.from(document.querySelectorAll('button'))
+        .find((button) => button.getAttribute('aria-label') === `publish ${title}`);
+      publishButton?.click();
+    }, examTitle);
+    await page.waitForFunction((title) => {
+      const button = Array.from(document.querySelectorAll('button'))
+        .find((item) => item.getAttribute('aria-label') === `unpublish ${title}`);
+      return button?.getAttribute('aria-pressed') === 'true';
+    }, { timeout: 10000 }, examTitle);
+
     // -------------------------------------------------------------------------
     // STEP 4: Candidate Lobby - View & Launch Test
     // -------------------------------------------------------------------------
     console.log('\n[4/7] Testing Candidate Lobby...');
+    await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }));
+    await page.goto('http://localhost:3000/login', { waitUntil: 'networkidle0' });
+    await page.type('#login-email', 'student@openhall.edu');
+    await page.type('#login-password', 'student123');
+    await page.click('button[type="submit"]');
+    await page.waitForFunction(() => window.location.pathname === '/lobby', { timeout: 10000 });
     await page.goto('http://localhost:3000/lobby', { waitUntil: 'networkidle0' });
     await sleep(800);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '10_lobby_candidate_view.png') });

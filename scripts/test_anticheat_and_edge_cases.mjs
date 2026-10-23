@@ -2,9 +2,10 @@ import puppeteer from 'puppeteer-core';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+import { resolveChromePath } from './browserSupport.mjs';
 
 const prisma = new PrismaClient();
-const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const CHROME_PATH = resolveChromePath();
 const SCREENSHOT_DIR = path.resolve('samples', 'screenshots_stress_test');
 
 if (!fs.existsSync(SCREENSHOT_DIR)) {
@@ -72,7 +73,7 @@ async function runStressAndEdgeTests() {
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '01_fullscreen_lockout_overlay.png') });
 
     const pageText = await page.evaluate(() => document.body.innerText);
-    const hasLockoutOverlay = pageText.includes('fullscreen required') || pageText.includes('resume fullscreen');
+    const hasLockoutOverlay = pageText.includes('fullscreen paused') || pageText.includes('resume exam');
     console.log('   Fullscreen lockout overlay active:', hasLockoutOverlay);
     testReport.push({
       test: 'Fullscreen Lockout Enforcement',

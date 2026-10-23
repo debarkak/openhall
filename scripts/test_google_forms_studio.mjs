@@ -1,8 +1,9 @@
 import puppeteer from 'puppeteer-core';
 import path from 'path';
 import fs from 'fs';
+import { resolveChromePath } from './browserSupport.mjs';
 
-const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const CHROME_PATH = resolveChromePath();
 const SCREENSHOT_DIR = path.join(process.cwd(), 'samples', 'screenshots_studio_forms');
 if (!fs.existsSync(SCREENSHOT_DIR)) {
   fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
@@ -26,6 +27,11 @@ async function runGoogleFormsStudioTest() {
   try {
     // 1. Navigate to Teacher Studio
     console.log('[1/5] Navigating to Teacher Studio (/studio)...');
+    await page.goto('http://localhost:3000/login', { waitUntil: 'networkidle0' });
+    await page.type('#login-email', 'teacher@openhall.edu');
+    await page.type('#login-password', 'teacher123');
+    await page.click('button[type="submit"]');
+    await page.waitForFunction(() => window.location.pathname === '/studio', { timeout: 10000 });
     await page.goto('http://localhost:3000/studio', { waitUntil: 'networkidle0' });
     await sleep(600);
 
@@ -46,9 +52,9 @@ async function runGoogleFormsStudioTest() {
 
     // Verify Google Forms card elements
     const pageText = await page.evaluate(() => document.body.innerText.toLowerCase());
-    const hasFormsCard = pageText.includes('question #') && 
-                         pageText.includes('multiple choice') && 
-                         pageText.includes('options:') && 
+    const hasFormsCard = pageText.includes('question #') &&
+                         pageText.includes('one correct answer') &&
+                         pageText.includes('options:') &&
                          pageText.includes('answer key:') &&
                          pageText.includes('add option') &&
                          pageText.includes('duplicate');
@@ -59,7 +65,7 @@ async function runGoogleFormsStudioTest() {
     report.push({
       test: '1. Google Forms Card Layout',
       status: hasFormsCard ? 'PASS' : 'FAIL',
-      details: 'Card header, question type dropdown, answer key, duplicate bar verified',
+      details: 'Card header, single-answer key, choices, and duplicate action verified',
     });
     report.push({
       test: '2. Live Draft Indicator',
@@ -80,7 +86,9 @@ async function runGoogleFormsStudioTest() {
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, '02_math_and_diagram_toggled.png') });
 
     const toggledText = await page.evaluate(() => document.body.innerText.toLowerCase());
-    const hasToggles = toggledText.includes('click formula snippet') && toggledText.includes('diagram / image url');
+    const hasToggles = toggledText.includes('click formula snippet') &&
+                       toggledText.includes('diagram / image:') &&
+                       toggledText.includes('paste an image url below');
     console.log('   Toggles expanded cleanly:', hasToggles);
     report.push({
       test: '3. Math Palette & Diagram Toggles',

@@ -2,9 +2,10 @@ import puppeteer from 'puppeteer-core';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs';
 import path from 'path';
+import { resolveChromePath } from './browserSupport.mjs';
 
 const prisma = new PrismaClient();
-const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const CHROME_PATH = resolveChromePath();
 const SCREENSHOT_DIR = path.resolve('samples', 'screenshots_test');
 
 if (!fs.existsSync(SCREENSHOT_DIR)) {
