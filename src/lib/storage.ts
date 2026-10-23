@@ -95,7 +95,15 @@ export async function queueOfflineAttempt(
   try {
     const db = await getDB();
     if (db) {
-      await db.add("offline_queue", payload);
+      const transaction = db.transaction("offline_queue", "readwrite");
+      const queued = await transaction.store.getAll();
+      for (const item of queued) {
+        if (item.sessionId === payload.sessionId && item.questionId === payload.questionId) {
+          await transaction.store.delete(item.id);
+        }
+      }
+      await transaction.store.add(payload);
+      await transaction.done;
       return;
     }
   } catch {
@@ -103,6 +111,14 @@ export async function queueOfflineAttempt(
   }
 
   try {
+    for (let index = localStorage.length - 1; index >= 0; index--) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith("oh_queue_")) continue;
+      const queued = JSON.parse(localStorage.getItem(key) || "null") as AttemptSubmissionPayload | null;
+      if (queued?.sessionId === payload.sessionId && queued.questionId === payload.questionId) {
+        localStorage.removeItem(key);
+      }
+    }
     const key = `oh_queue_${payload.sessionId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     localStorage.setItem(key, JSON.stringify(payload));
   } catch {
@@ -175,4 +191,31 @@ export async function countOfflineAttempts(sessionId: string): Promise<number> {
     return count;
   }
   return count;
+}
+
+export async function discardOfflineQueue(sessionId: string): Promise<void> {
+  try {
+    const db = await getDB();
+    if (db) {
+      const transaction = db.transaction("offline_queue", "readwrite");
+      const queued = await transaction.store.getAll();
+      for (const item of queued) {
+        if (item.sessionId === sessionId) await transaction.store.delete(item.id);
+      }
+      await transaction.done;
+    }
+  } catch {
+    // The localStorage queue is cleared below when IndexedDB is unavailable.
+  }
+
+  try {
+    for (let index = localStorage.length - 1; index >= 0; index--) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith("oh_queue_")) continue;
+      const queued = JSON.parse(localStorage.getItem(key) || "null") as AttemptSubmissionPayload | null;
+      if (queued?.sessionId === sessionId) localStorage.removeItem(key);
+    }
+  } catch {
+    // The scorecard still reports that some answers could not be submitted.
+  }
 }

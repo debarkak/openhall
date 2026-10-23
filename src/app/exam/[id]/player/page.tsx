@@ -11,6 +11,7 @@ import { SubmissionSpinner } from "@/components/exam/SubmissionSpinner";
 import { useBrowserLockdown } from "@/lib/anticheat";
 import {
   countOfflineAttempts,
+  discardOfflineQueue,
   flushOfflineQueue,
   getLocalAttempts,
   persistAttemptLocally,
@@ -19,6 +20,11 @@ import {
 import { AttemptSubmissionPayload, CandidateExamManifest, ItemStatus } from "@/lib/types";
 import { Info, AlertTriangle, ShieldAlert, Maximize2, XCircle } from "lucide-react";
 import Link from "next/link";
+
+interface QuestionNavigationTarget {
+  sectionIndex: number;
+  questionIndex: number;
+}
 
 export default function ExamPlayerPage() {
   const params = useParams<{ id: string }>();
@@ -45,7 +51,7 @@ export default function ExamPlayerPage() {
   >({});
 
   // Guardrail Modal State
-  const [guardrailTargetIndex, setGuardrailTargetIndex] = useState<number | null>(null);
+  const [guardrailTarget, setGuardrailTarget] = useState<QuestionNavigationTarget | null>(null);
   const [isGuardrailOpen, setIsGuardrailOpen] = useState(false);
 
   // Early submission confirm modal
@@ -77,6 +83,7 @@ export default function ExamPlayerPage() {
   } = useBrowserLockdown({
     sessionId,
     enabled: !isSubmitting && !!manifest,
+    initialStrikes: manifest?.integrityStrikes ?? 0,
     maxStrikes: 3,
   });
 
@@ -253,6 +260,7 @@ export default function ExamPlayerPage() {
     if (isSubmitting) return;
     setSubmissionError(null);
     setIsSubmitting(true);
+    let unsyncedAnswerCount = 0;
 
     try {
       if (activeQuestion && selectedOptionId) {
@@ -284,9 +292,7 @@ export default function ExamPlayerPage() {
           return false;
         }
       }, sessionId);
-      if (await countOfflineAttempts(sessionId)) {
-        throw new Error("some answers are waiting to sync. reconnect, then retry your submission.");
-      }
+      unsyncedAnswerCount = await countOfflineAttempts(sessionId);
 
       const res = await fetch(`/api/sessions/${sessionId}/submit`, {
         method: "POST",
@@ -294,9 +300,19 @@ export default function ExamPlayerPage() {
       });
 
       if (res.ok) {
-        router.push(`/exam/${sessionId}/results`);
+        if (unsyncedAnswerCount > 0) {
+          await discardOfflineQueue(sessionId);
+          router.push(`/exam/${sessionId}/results?answers=unsynced`);
+        } else {
+          router.push(`/exam/${sessionId}/results`);
+        }
       } else if (res.status === 409) {
-        router.push(`/exam/${sessionId}/results`);
+        if (unsyncedAnswerCount > 0) {
+          await discardOfflineQueue(sessionId);
+          router.push(`/exam/${sessionId}/results?answers=unsynced`);
+        } else {
+          router.push(`/exam/${sessionId}/results`);
+        }
       } else {
         const data = await res.json().catch(() => ({}));
         setSubmissionError(data.error || "the exam could not be submitted. check your connection and retry.");
@@ -371,30 +387,45 @@ export default function ExamPlayerPage() {
   ]);
 
   // 5. Deselect Handler
-  const handleDeselect = useCallback(() => {
+  const handleDeselect = useCallback(async () => {
+    if (!activeQuestion || isSubmitting) return;
+
+    const questionId = activeQuestion.id;
+    const payload: AttemptSubmissionPayload = {
+      sessionId,
+      questionId,
+      optionId: null,
+      status: "VISITED_UNANSWERED",
+      timestamp: new Date().toISOString(),
+    };
     setSelectedOptionId(null);
-  }, []);
+    setAttempts((current) => ({
+      ...current,
+      [questionId]: { optionId: null, status: "VISITED_UNANSWERED" },
+    }));
+    await persistAttemptLocally(sessionId, questionId, null, "VISITED_UNANSWERED");
+    void syncAttemptToServer(payload);
+  }, [activeQuestion, isSubmitting, sessionId, syncAttemptToServer]);
 
   // 6. Skip Handler
   const handleSkip = useCallback(async () => {
-    if (!activeQuestion || !activeSection) return;
+    if (!activeQuestion || !activeSection || isSubmitting) return;
 
     const qId = activeQuestion.id;
-    const currentAttempt = attempts[qId];
-    if (!currentAttempt || currentAttempt.status !== "ATTEMPTED_SAVED") {
-      setAttempts((prev) => ({
-        ...prev,
-        [qId]: { optionId: null, status: "VISITED_UNANSWERED" },
-      }));
-      await persistAttemptLocally(sessionId, qId, null, "VISITED_UNANSWERED");
-      void syncAttemptToServer({
-        sessionId,
-        questionId: qId,
-        optionId: null,
-        status: "VISITED_UNANSWERED",
-        timestamp: new Date().toISOString(),
-      });
-    }
+    const payload: AttemptSubmissionPayload = {
+      sessionId,
+      questionId: qId,
+      optionId: null,
+      status: "VISITED_UNANSWERED",
+      timestamp: new Date().toISOString(),
+    };
+    setSelectedOptionId(null);
+    setAttempts((prev) => ({
+      ...prev,
+      [qId]: { optionId: null, status: "VISITED_UNANSWERED" },
+    }));
+    await persistAttemptLocally(sessionId, qId, null, "VISITED_UNANSWERED");
+    void syncAttemptToServer(payload);
 
     // Advance forward
     if (currentQuestionIndex < activeSection.questions.length - 1) {
@@ -403,31 +434,32 @@ export default function ExamPlayerPage() {
       setCurrentSectionIndex((prev) => prev + 1);
       setCurrentQuestionIndex(0);
     }
-  }, [activeQuestion, activeSection, attempts, sessionId, currentQuestionIndex, currentSectionIndex, manifest, syncAttemptToServer]);
+  }, [activeQuestion, activeSection, sessionId, currentQuestionIndex, currentSectionIndex, manifest, isSubmitting, syncAttemptToServer]);
 
   // 7. Palette Navigation with Guardrail Check
-  const handlePaletteSelect = useCallback(
-    (targetIndex: number) => {
-      if (!activeQuestion) return;
+  const navigateToQuestion = useCallback((target: QuestionNavigationTarget) => {
+    if (!activeQuestion || isSubmitting) return;
+    if (target.sectionIndex === currentSectionIndex && target.questionIndex === currentQuestionIndex) return;
 
-      const saved = attempts[activeQuestion.id];
-      const hasUncommittedChange =
-        selectedOptionId !== null &&
-        selectedOptionId !== (saved?.optionId ?? null);
+    const saved = attempts[activeQuestion.id];
+    const hasUncommittedChange = selectedOptionId !== (saved?.optionId ?? null);
+    if (hasUncommittedChange) {
+      setGuardrailTarget(target);
+      setIsGuardrailOpen(true);
+      return;
+    }
 
-      if (hasUncommittedChange) {
-        setGuardrailTargetIndex(targetIndex);
-        setIsGuardrailOpen(true);
-      } else {
-        setCurrentQuestionIndex(targetIndex);
-      }
-    },
-    [activeQuestion, attempts, selectedOptionId]
-  );
+    setCurrentSectionIndex(target.sectionIndex);
+    setCurrentQuestionIndex(target.questionIndex);
+  }, [activeQuestion, attempts, currentQuestionIndex, currentSectionIndex, isSubmitting, selectedOptionId]);
+
+  const handlePaletteSelect = useCallback((targetIndex: number) => {
+    navigateToQuestion({ sectionIndex: currentSectionIndex, questionIndex: targetIndex });
+  }, [currentSectionIndex, navigateToQuestion]);
 
   // Guardrail Modal Confirm: Save provisional choice and jump
   const handleGuardrailConfirm = useCallback(async () => {
-    if (!activeQuestion || guardrailTargetIndex === null) return;
+    if (!activeQuestion || guardrailTarget === null) return;
 
     const qId = activeQuestion.id;
     const newStatus: ItemStatus = selectedOptionId ? "ATTEMPTED_SAVED" : "VISITED_UNANSWERED";
@@ -445,17 +477,19 @@ export default function ExamPlayerPage() {
     });
 
     setIsGuardrailOpen(false);
-    setCurrentQuestionIndex(guardrailTargetIndex);
-    setGuardrailTargetIndex(null);
-  }, [activeQuestion, guardrailTargetIndex, selectedOptionId, sessionId, syncAttemptToServer]);
+    setCurrentSectionIndex(guardrailTarget.sectionIndex);
+    setCurrentQuestionIndex(guardrailTarget.questionIndex);
+    setGuardrailTarget(null);
+  }, [activeQuestion, guardrailTarget, selectedOptionId, sessionId, syncAttemptToServer]);
 
   // Guardrail Modal Cancel: Discard provisional choice and jump
   const handleGuardrailCancel = useCallback(() => {
-    if (guardrailTargetIndex === null) return;
+    if (guardrailTarget === null) return;
     setIsGuardrailOpen(false);
-    setCurrentQuestionIndex(guardrailTargetIndex);
-    setGuardrailTargetIndex(null);
-  }, [guardrailTargetIndex]);
+    setCurrentSectionIndex(guardrailTarget.sectionIndex);
+    setCurrentQuestionIndex(guardrailTarget.questionIndex);
+    setGuardrailTarget(null);
+  }, [guardrailTarget]);
 
   // Section global question offset for numbered badges
   const sectionStartQuestionNumber = useMemo(() => {
@@ -560,10 +594,7 @@ export default function ExamPlayerPage() {
               <button
                 key={section.id}
                 type="button"
-                onClick={() => {
-                  setCurrentSectionIndex(idx);
-                  setCurrentQuestionIndex(0);
-                }}
+                onClick={() => navigateToQuestion({ sectionIndex: idx, questionIndex: 0 })}
                 className={`whitespace-nowrap px-4 py-1.5 text-xs sm:text-sm font-bold border-2 border-b-0 border-t-white border-l-white border-r-[#475569] ${
                   isActive
                     ? "bg-white text-slate-900 -mb-[2px] z-10 shadow-xs"
@@ -835,7 +866,8 @@ export default function ExamPlayerPage() {
                 <p>• <strong>sections:</strong> click subject tabs at the top to navigate between sections.</p>
                 <p>• <strong>palette:</strong> click question numbers on the right to jump directly to any question.</p>
                 <p>• <strong>save answers:</strong> click <strong>[save &amp; next]</strong> to record each answer.</p>
-                <p>• <strong>lockdown:</strong> exiting fullscreen or alt-tabbing triggers an integrity strike (3 strikes = disqualified).</p>
+                <p>• <strong>focus:</strong> leaving the exam tab or exiting fullscreen may be recorded. repeated focus events can end the attempt.</p>
+                <p>• <strong>fullscreen:</strong> the exam uses it when your browser supports it; otherwise you can keep working without it.</p>
               </div>
               <div className="flex justify-end">
                 <button
@@ -867,14 +899,14 @@ export default function ExamPlayerPage() {
               <div className="flex items-center gap-1.5">
                 <ShieldAlert className="h-4 w-4 text-red-300" />
                 <span className="text-xs font-bold tracking-wide">
-                  fullscreen required
+                  fullscreen paused
                 </span>
               </div>
             </div>
             <div className="p-5 text-center">
               <div className="retro-sunken bg-white p-4 text-left mb-4">
                 <p className="text-xs text-slate-700 leading-relaxed">
-                  this test requires fullscreen mode. all questions are frozen until you restore fullscreen.
+                  this browser left fullscreen. the questions are paused while you choose whether to resume it.
                 </p>
                 {strikes > 0 && (
                   <div className="mt-2.5 retro-panel bg-red-50 p-2 text-xs font-bold text-red-800 border-red-300">
@@ -888,7 +920,7 @@ export default function ExamPlayerPage() {
                 className="retro-btn-green w-full py-2 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Maximize2 className="h-3.5 w-3.5" />
-                resume fullscreen
+                resume exam
               </button>
             </div>
           </div>

@@ -14,10 +14,14 @@ export default function ExamResultsPage() {
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [hasUnsyncedAnswers, setHasUnsyncedAnswers] = useState(false);
 
   useEffect(() => {
     async function loadScorecard() {
       try {
+        setHasUnsyncedAnswers(
+          new URLSearchParams(window.location.search).get("answers") === "unsynced"
+        );
         const res = await fetch(`/api/sessions/${sessionId}/scorecard`);
         if (res.ok) {
           const data: EvaluationResult = await res.json();
@@ -71,5 +75,5 @@ export default function ExamResultsPage() {
     );
   }
 
-  return <ScorecardTable result={result} />;
+  return <ScorecardTable result={result} hasUnsyncedAnswers={hasUnsyncedAnswers} />;
 }

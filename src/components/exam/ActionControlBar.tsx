@@ -21,14 +21,14 @@ export const ActionControlBar: React.FC<ActionControlBarProps> = ({
 }) => {
   return (
     <div className="flex w-full items-center justify-between gap-3 border-t-2 border-t-slate-400 bg-[#e2e8f0] px-4 py-2.5 sm:px-6">
-      {/* Left Action: Deselect */}
+      {/* Left Action: Clear the current saved choice */}
       <button
         type="button"
         onClick={onDeselect}
         disabled={disabled || !hasSelection}
         className="retro-btn px-4 py-2 text-xs sm:text-sm font-bold tracking-tight disabled:opacity-50"
       >
-        deselect
+        clear answer
       </button>
 
       {/* Right Cluster: Skip + Save & Next */}
@@ -39,7 +39,7 @@ export const ActionControlBar: React.FC<ActionControlBarProps> = ({
           disabled={disabled}
           className="retro-btn px-4 py-2 text-xs sm:text-sm font-bold tracking-tight hover:bg-slate-100"
         >
-          skip &rarr;
+          {isLastQuestion ? "leave blank" : "skip →"}
         </button>
 
         <button
@@ -48,7 +48,7 @@ export const ActionControlBar: React.FC<ActionControlBarProps> = ({
           disabled={disabled}
           className="retro-btn-green px-5 py-2 text-xs sm:text-sm font-bold tracking-tight"
         >
-          {isLastQuestion ? "save & finish section" : "save & next"}
+          {isLastQuestion ? "save answer" : "save & next"}
         </button>
       </div>
     </div>

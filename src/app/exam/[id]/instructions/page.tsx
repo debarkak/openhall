@@ -49,7 +49,7 @@ export default function ExamInstructionsPage() {
         await document.documentElement.requestFullscreen();
       }
     } catch {
-      // Browser user gesture fallback
+      // The player will continue without fullscreen if this browser rejects it.
     }
 
     router.push(`/exam/${sessionId}/player`);
@@ -132,7 +132,7 @@ export default function ExamInstructionsPage() {
             <div className="retro-titlebar mb-2.5 py-1 bg-gradient-to-r from-red-800 to-slate-800">
               <span className="text-xs font-bold tracking-wider flex items-center gap-1.5">
                 <ShieldAlert className="h-3.5 w-3.5 text-amber-300" />
-                test rules &amp; anti-cheat
+                before you begin
               </span>
             </div>
 
@@ -143,7 +143,7 @@ export default function ExamInstructionsPage() {
                     1
                   </span>
                   <span>
-                    <strong>fullscreen required:</strong> the test runs in fullscreen. if you exit fullscreen, questions freeze until you re-enter.
+                    <strong>fullscreen:</strong> the test will use fullscreen when your browser allows it. if it cannot, you can still continue.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
@@ -151,7 +151,7 @@ export default function ExamInstructionsPage() {
                     2
                   </span>
                   <span>
-                    <strong>no alt-tabbing:</strong> switching tabs or applications gives you a violation strike. <strong>3 strikes = test terminated &amp; disqualified.</strong>
+                    <strong>stay on this page:</strong> leaving the exam tab or exiting fullscreen may be recorded. repeated focus events can end your attempt.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
@@ -159,7 +159,7 @@ export default function ExamInstructionsPage() {
                     3
                   </span>
                   <span>
-                    <strong>no devtools or copy-paste:</strong> f12, inspect element, right-click, and clipboard shortcuts are blocked.
+                    <strong>answers:</strong> select one choice, then save it before moving on. you can revisit questions at any time.
                   </span>
                 </li>
               </ul>
@@ -176,7 +176,7 @@ export default function ExamInstructionsPage() {
                 className="mt-0.5 h-4 w-4 rounded-none border-2 border-slate-700 text-emerald-700"
               />
               <span className="text-xs font-bold text-slate-800 leading-normal">
-                i understand the rules and agree to take this test under fullscreen lockdown.
+                i understand that focus changes may be recorded during the exam.
               </span>
             </label>
           </div>

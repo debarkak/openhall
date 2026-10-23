@@ -37,6 +37,7 @@ export interface CandidateExamManifest {
   negativePenalty: number;
   startedAt: string;
   deadline: string; // Absolute ISO timestamp from server
+  integrityStrikes: number;
   sections: CandidateSection[];
   initialAttempts: Record<string, { optionId: string | null; status: ItemStatus }>;
 }

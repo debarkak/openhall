@@ -9,6 +9,7 @@ import type { EvaluationResult, QuestionReview } from "@/lib/types";
 
 interface ScorecardTableProps {
   result: EvaluationResult;
+  hasUnsyncedAnswers?: boolean;
 }
 
 function scoreLabel(score: number, maximum: number) {
@@ -71,7 +72,7 @@ function ReviewCard({ review, forceOpen = false }: { review: QuestionReview; for
   );
 }
 
-export function ScorecardTable({ result }: ScorecardTableProps) {
+export function ScorecardTable({ result, hasUnsyncedAnswers = false }: ScorecardTableProps) {
   const [showAll, setShowAll] = useState(false);
   const [printMode, setPrintMode] = useState(false);
   const reviews = result.questionReviews ?? [];
@@ -104,6 +105,11 @@ export function ScorecardTable({ result }: ScorecardTableProps) {
       </PortalHeader>
 
       <main className="portal-main score-main">
+        {hasUnsyncedAnswers && (
+          <div className="retro-panel mb-4 border-amber-400 bg-amber-50 p-3 text-xs text-amber-950" role="status">
+            some answers did not reach the server before submission. this report uses answers saved online.
+          </div>
+        )}
         <section className="score-heading">
           <div>
             <span className="portal-eyebrow">examination report</span>

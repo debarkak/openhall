@@ -6,6 +6,7 @@ import { TelemetryEvent } from "./types";
 interface LockdownOptions {
   sessionId: string;
   enabled: boolean;
+  initialStrikes?: number;
   maxStrikes?: number;
   onDisqualified?: () => void;
   onViolation?: (event: TelemetryEvent) => void;
@@ -14,6 +15,7 @@ interface LockdownOptions {
 export function useBrowserLockdown({
   sessionId,
   enabled,
+  initialStrikes = 0,
   maxStrikes = 3,
   onDisqualified,
   onViolation,
@@ -30,7 +32,30 @@ export function useBrowserLockdown({
 
   const isEnforcingRef = useRef(enabled);
   isEnforcingRef.current = enabled;
+  const fullscreenEnforcementRef = useRef(true);
+  const fullscreenFailedRef = useRef(false);
   const lastBlurTimestampRef = useRef<number>(0);
+  const initializedSessionRef = useRef<string | null>(null);
+
+  const submitDisqualifiedSession = useCallback(() => {
+    fetch(`/api/sessions/${sessionId}/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ disqualified: true }),
+    }).catch(() => {});
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!enabled || initializedSessionRef.current === sessionId) return;
+    initializedSessionRef.current = sessionId;
+    const savedStrikes = Math.max(0, initialStrikes);
+    setStrikes(savedStrikes);
+    if (savedStrikes >= maxStrikes) {
+      setIsDisqualified(true);
+      onDisqualified?.();
+      submitDisqualifiedSession();
+    }
+  }, [enabled, initialStrikes, maxStrikes, onDisqualified, sessionId, submitDisqualifiedSession]);
 
   const logViolation = useCallback(
     async (eventType: TelemetryEvent["eventType"], metadata?: Record<string, unknown>) => {
@@ -67,11 +92,7 @@ export function useBrowserLockdown({
             onDisqualified();
           }
           // Transmit final disqualification
-          fetch(`/api/sessions/${sessionId}/submit`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ disqualified: true }),
-          }).catch(() => {});
+          submitDisqualifiedSession();
         } else {
           setActiveViolationModal({
             eventType,
@@ -82,7 +103,7 @@ export function useBrowserLockdown({
         return next;
       });
     },
-    [maxStrikes, onDisqualified, sessionId]
+    [maxStrikes, onDisqualified, submitDisqualifiedSession]
   );
 
   useEffect(() => {
@@ -90,20 +111,24 @@ export function useBrowserLockdown({
 
     // Check initial fullscreen on start
     if (typeof document !== "undefined") {
-      if (!document.fullscreenElement) {
+      fullscreenEnforcementRef.current =
+        typeof document.documentElement.requestFullscreen === "function" && !fullscreenFailedRef.current;
+      if (fullscreenEnforcementRef.current && !document.fullscreenElement) {
         setIsFullscreenLocked(true);
+      } else {
+        setIsFullscreenLocked(false);
       }
     }
 
     // 1. Fullscreen change listener
     const handleFullscreenChange = () => {
-      if (!isEnforcingRef.current) return;
+      if (!isEnforcingRef.current || !fullscreenEnforcementRef.current) return;
       if (!document.fullscreenElement) {
         setIsFullscreenLocked(true);
         logViolation("FULLSCREEN_EXIT", { reason: "Fullscreen exited by user" });
         handleStrike(
           "FULLSCREEN_EXIT",
-          "You exited Fullscreen mode. OpenHall requires Fullscreen mode to be maintained for the entire exam duration."
+          "Fullscreen was exited. Stay on the exam page to avoid further focus alerts."
         );
       } else {
         setIsFullscreenLocked(false);
@@ -223,18 +248,27 @@ export function useBrowserLockdown({
 
   const reEnterFullscreen = async () => {
     try {
+      if (typeof document.documentElement.requestFullscreen !== "function") {
+        fullscreenFailedRef.current = true;
+        fullscreenEnforcementRef.current = false;
+        setIsFullscreenLocked(false);
+        return;
+      }
       if (document.documentElement && !document.fullscreenElement) {
         await document.documentElement.requestFullscreen();
       }
       setIsFullscreenLocked(false);
     } catch {
-      // User gesture might be needed
+      // Some browsers reject fullscreen even after a user gesture. Keep the exam usable there.
+      fullscreenFailedRef.current = true;
+      fullscreenEnforcementRef.current = false;
+      setIsFullscreenLocked(false);
     }
   };
 
   const dismissViolationModal = () => {
     setActiveViolationModal(null);
-    if (!document.fullscreenElement) {
+    if (fullscreenEnforcementRef.current && !document.fullscreenElement) {
       setIsFullscreenLocked(true);
     }
   };
