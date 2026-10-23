@@ -74,15 +74,17 @@ export async function requireExamStaffAccess(examId: string): Promise<NextRespon
   return null;
 }
 
-/** Keep assessment content stable as soon as a candidate has a session. */
+/** Keep assessment content stable after a candidate actually starts the exam. */
 export async function requireExamContentAccess(examId: string): Promise<NextResponse | null> {
   const accessError = await requireExamStaffAccess(examId);
   if (accessError) return accessError;
 
-  const sessionCount = await prisma.examSession.count({ where: { examId } });
-  if (sessionCount > 0) {
+  const activeOrFinishedSessionCount = await prisma.examSession.count({
+    where: { examId, status: { not: "NOT_STARTED" } },
+  });
+  if (activeOrFinishedSessionCount > 0) {
     return NextResponse.json(
-      { error: "Exam content is locked after a candidate enrolls." },
+      { error: "Exam content is locked after a candidate starts the exam." },
       { status: 409 }
     );
   }

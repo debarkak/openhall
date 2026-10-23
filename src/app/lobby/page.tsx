@@ -23,6 +23,12 @@ export default async function CandidateLobbyPage() {
   }
 
   const exams = await prisma.exam.findMany({
+    where: {
+      OR: [
+        { isLive: true },
+        { sessions: { some: { candidateId: candidate.id } } },
+      ],
+    },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -53,7 +59,7 @@ export default async function CandidateLobbyPage() {
     description: exam.description,
     durationSeconds: exam.durationSeconds,
     isLive: exam.isLive,
-    sections: exam.sections.map((section) => ({
+    sections: exam.sections.filter((section) => section._count.questions > 0).map((section) => ({
       id: section.id,
       title: section.title,
       questionCount: section._count.questions,
@@ -62,7 +68,7 @@ export default async function CandidateLobbyPage() {
   }));
 
   const inProgressExam = lobbyExams.find((exam) => exam.session?.status === "IN_PROGRESS");
-  const readyExam = lobbyExams.find((exam) => exam.session?.status === "NOT_STARTED") ||
+  const readyExam = lobbyExams.find((exam) => exam.isLive && exam.session?.status === "NOT_STARTED") ||
     lobbyExams.find((exam) => exam.isLive && !exam.session);
   const featuredExam = inProgressExam || readyExam;
   const availableCount = lobbyExams.filter((exam) =>
@@ -86,7 +92,7 @@ export default async function CandidateLobbyPage() {
             <p className="portal-eyebrow"><GraduationCap className="h-3.5 w-3.5" /> candidate workspace</p>
             <h1 className="portal-title">your exam desk</h1>
             <p className="portal-description">
-              welcome, {candidate.name.toLowerCase()}. pick up an active attempt or choose an exam from the list.
+              welcome, {candidate.name.toLowerCase()}. resume an exam or choose one your teacher has opened.
             </p>
           </div>
           <div className="lobby-welcome-mark" aria-hidden="true"><GraduationCap /></div>

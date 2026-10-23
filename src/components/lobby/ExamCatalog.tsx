@@ -126,7 +126,7 @@ export function ExamCatalog({ exams }: { exams: LobbyExam[] }) {
                   <div className="lobby-exam-card__topline">
                     <span className={`portal-chip ${inProgress ? "portal-chip--warning" : exam.isLive ? "portal-chip--live" : ""}`}>
                       <span className={`lobby-status-dot ${!exam.isLive ? "is-muted" : inProgress ? "is-working" : ""}`} aria-hidden="true" />
-                      {inProgress ? "in progress" : done ? "finished" : exam.isLive ? "available" : "upcoming"}
+                      {inProgress ? "in progress" : done ? "finished" : exam.isLive ? "available" : "closed"}
                     </span>
                     <span className="lobby-exam-duration"><Clock3 aria-hidden="true" /> {Math.floor(exam.durationSeconds / 60)} min</span>
                   </div>
@@ -151,10 +151,12 @@ export function ExamCatalog({ exams }: { exams: LobbyExam[] }) {
                     <Link href={`/exam/${session.id}/player`} className="retro-btn-green gap-1.5 px-3 py-2 text-[11px]">
                       <Play className="h-3.5 w-3.5" /> resume exam <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
-                  ) : notStarted && session ? (
+                  ) : notStarted && session && exam.isLive ? (
                     <Link href={`/exam/${session.id}/instructions`} className="retro-btn-green gap-1.5 px-3 py-2 text-[11px]">
                       <Play className="h-3.5 w-3.5" /> review instructions <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
+                  ) : notStarted && session ? (
+                    <span className="lobby-unavailable">your teacher closed this exam before you started</span>
                   ) : exam.isLive ? (
                     <TakeExamButton examId={exam.id} className="retro-btn-green gap-1.5 px-3 py-2 text-[11px]">
                       <Play className="h-3.5 w-3.5" /> start exam <ArrowRight className="h-3.5 w-3.5" />

@@ -43,6 +43,10 @@ export async function GET(
           },
         },
         attempts: true,
+        proctorLogs: {
+          where: { eventType: { in: ["FULLSCREEN_EXIT", "TAB_SWITCH"] } },
+          select: { id: true },
+        },
       },
     });
 
@@ -50,8 +54,17 @@ export async function GET(
       return NextResponse.json({ error: "Exam session not found" }, { status: 404 });
     }
 
+    if (session.status === "NOT_STARTED" && !session.exam.isLive) {
+      return NextResponse.json({ error: "This exam is no longer available." }, { status: 403 });
+    }
+
     if (session.status === "SUBMITTED" || session.status === "EVALUATED" || session.status === "DISQUALIFIED") {
       return NextResponse.json({ error: "This exam session is no longer active." }, { status: 403 });
+    }
+
+    const candidateSections = session.exam.sections.filter((section) => section.questions.length > 0);
+    if (candidateSections.length === 0) {
+      return NextResponse.json({ error: "This exam does not have any questions yet." }, { status: 409 });
     }
 
     // The instructions page only needs exam details. Starting the timer there
@@ -114,7 +127,8 @@ export async function GET(
       negativePenalty: session.exam.negativePenalty,
       startedAt: startedAt.toISOString(),
       deadline: (deadline || new Date()).toISOString(),
-      sections: session.exam.sections.map((s) => ({
+      integrityStrikes: session.proctorLogs.length,
+      sections: candidateSections.map((s) => ({
         id: s.id,
         title: s.title,
         orderIndex: s.orderIndex,

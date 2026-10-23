@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authorizeCandidate } from "@/lib/authorization";
 import { broadcastProctorEvent } from "@/lib/proctorBroadcast";
+import { getExamReadinessIssues } from "@/lib/examReadiness";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,17 @@ export async function POST(
 
     const exam = await prisma.exam.findUnique({
       where: { id: examId },
+      include: {
+        sections: {
+          orderBy: { orderIndex: "asc" },
+          include: {
+            questions: {
+              orderBy: { orderIndex: "asc" },
+              include: { options: { orderBy: { orderIndex: "asc" } } },
+            },
+          },
+        },
+      },
     });
 
     if (!exam) {
@@ -31,9 +43,21 @@ export async function POST(
       },
     });
 
+    if (session?.status === "NOT_STARTED" && !exam.isLive) {
+      return NextResponse.json({ error: "This exam is not accepting new attempts." }, { status: 403 });
+    }
+
     if (!session) {
       if (!exam.isLive) {
         return NextResponse.json({ error: "This exam is not accepting new candidates." }, { status: 403 });
+      }
+
+      const issues = getExamReadinessIssues(exam.sections);
+      if (issues.length > 0) {
+        return NextResponse.json(
+          { error: "Your teacher is still preparing this exam.", issues },
+          { status: 409 }
+        );
       }
 
       session = await prisma.examSession.create({
