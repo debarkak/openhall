@@ -191,8 +191,10 @@ export default function TeacherStudioPage() {
   };
 
   const deleteExam = async (exam: ExamItem) => {
+    if (exam._count.sessions > 0) return;
+
     const confirmed = window.confirm(
-      `delete “${exam.title}”? this also removes its sections, questions, and candidate sessions.`
+      `delete “${exam.title}”? this permanently removes its sections and questions.`
     );
     if (!confirmed) return;
 
@@ -200,7 +202,8 @@ export default function TeacherStudioPage() {
     setBusyExamId(exam.id);
     try {
       const response = await fetch(`/api/admin/exams/${exam.id}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("could not delete this exam.");
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || "could not delete this exam.");
       setExams((current) => current.filter((item) => item.id !== exam.id));
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "could not delete this exam.");
@@ -371,13 +374,20 @@ export default function TeacherStudioPage() {
                         <Shield className="h-3.5 w-3.5" /> monitor
                       </Link>
                       <div className="studio-exam-card__actions">
+                        {exam._count.sessions > 0 && (
+                          <span className="studio-delete-note">candidate records keep this paper</span>
+                        )}
                         <button
                           type="button"
                           className="studio-icon-button studio-icon-button--delete"
                           onClick={() => void deleteExam(exam)}
-                          disabled={isBusy}
-                          aria-label={`delete ${exam.title}`}
-                          title="delete exam"
+                          disabled={isBusy || exam._count.sessions > 0}
+                          aria-label={exam._count.sessions > 0
+                            ? `cannot delete ${exam.title}; candidate records exist`
+                            : `delete ${exam.title}`}
+                          title={exam._count.sessions > 0
+                            ? "papers with candidate records cannot be deleted"
+                            : "delete exam"}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -496,6 +506,7 @@ export default function TeacherStudioPage() {
         .studio-section-empty { color: #7a8c99; font-size: 10px; font-style: italic; }
         .studio-exam-card__footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-top: 1px solid #e0e7ec; background: #f7f9fa; }
         .studio-exam-card__actions { display: flex; align-items: center; gap: 7px; }
+        .studio-delete-note { color: #788894; font-size: 9px; line-height: 1.25; text-align: right; }
         .studio-loading { padding: 52px 12px; color: #607689; text-align: center; font-size: 13px; }
         .studio-spinner { width: 13px; height: 13px; border: 2px solid #9db0bc; border-top-color: #315f7b; border-radius: 50%; animation: studio-spin .8s linear infinite; }
         @keyframes studio-spin { to { transform: rotate(360deg); } }
