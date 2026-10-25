@@ -5,6 +5,14 @@ import { spawn } from "node:child_process";
 const projectRoot = process.cwd();
 const standaloneRoot = path.join(projectRoot, ".next", "standalone");
 
+try {
+  if (typeof process.loadEnvFile === "function") {
+    process.loadEnvFile(path.join(projectRoot, ".env"));
+  }
+} catch {
+  // .env file not present or already provided via environment
+}
+
 async function stageBuildDirectory(name) {
   const source = path.join(projectRoot, name);
   const destination = path.join(standaloneRoot, name);
